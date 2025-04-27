@@ -51,6 +51,6 @@ func (s *UserService) Update(ctx context.Context, tx *sql.Tx, payload *entity.Us
 	})
 }
 
-func (s *UserService) Delete(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *UserService) Delete(ctx context.Context, tx *sql.Tx, id int) error {
 	return s.userRepository.Delete(ctx, tx, id)
 }

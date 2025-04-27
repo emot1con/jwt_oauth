@@ -1,15 +1,20 @@
 package usecases
 
 import (
+	"auth/internal/config"
 	"auth/internal/domain/entity"
-	"auth/internal/domain/interface"
+	domain_interface "auth/internal/domain/interface"
 	"auth/pkg/helper"
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/sirupsen/logrus"
 )
 
@@ -98,14 +103,113 @@ func (s *UserUseCase) Login(payload *entity.LoginPayload) (*entity.JWTResponse, 
 		return nil, errors.New("invalid password")
 	}
 
-	token, err := helper.GenerateToken(user.ID)
+	accessToken, err := helper.GenerateToken(user.ID, "user", 1, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := helper.GenerateToken(user.ID, "user", 0, 3, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	return &entity.JWTResponse{
-		Token:     token,
-		ExpiredAt: time.Now().Add(time.Hour * 24),
+		Token:                 fmt.Sprintf("Bearer %s", accessToken),
+		TokenExpiredAt:        time.Now().AddDate(1, 0, 0).Format("2006-01-02 15:04:05"),
+		RefreshToken:          fmt.Sprintf("Bearer %s", refreshToken),
+		RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0).Format("2006-01-02 15:04:05"),
 	}, nil
+}
 
+func (s *UserUseCase) GetUserByID(id int) (*entity.User, error) {
+	tx, err := s.dB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	defer helper.CommitOrRollback(tx)
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	ctx := context.Background()
+	user, err := s.userService.GetByID(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *UserUseCase) DeleteUser(payload *entity.User) error {
+	tx, err := s.dB.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer helper.CommitOrRollback(tx)
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	ctx := context.Background()
+	err = s.userService.Delete(ctx, tx, payload.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserUseCase) Logout(bearerToken string) error {
+	tx, err := s.dB.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer helper.CommitOrRollback(tx)
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	stringToken := strings.Split(bearerToken, " ")[1]
+	token, err := jwt.ParseWithClaims(stringToken, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(os.Getenv("SECRET_KEY")), nil
+	})
+	if err != nil || !token.Valid {
+		return errors.New("invalid token")
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return fmt.Errorf("invalid claims")
+	}
+
+	expAt := int64(claims["exp"].(float64))
+	if time.Now().Unix() > expAt {
+		return fmt.Errorf("acces token expired")
+	}
+
+	logrus.Info("blacklist token")
+	ttl := time.Until(time.Unix(expAt, 0))
+	redisKey := "blacklist:" + strings.Split(stringToken, " ")[1]
+	if err := config.RedisClient.Set(context.Background(), redisKey, "revoked", ttl).Err(); err != nil {
+		return err
+	}
+
+	return nil
 }

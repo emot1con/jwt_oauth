@@ -107,7 +107,7 @@ func (r *UserRepository) Update(ctx context.Context, tx *sql.Tx, user *entity.Us
 }
 
 // Delete removes a user from the database
-func (r *UserRepository) Delete(ctx context.Context, tx *sql.Tx, id string) error {
+func (r *UserRepository) Delete(ctx context.Context, tx *sql.Tx, id int) error {
 	query := `
 		DELETE FROM users
 		WHERE id = $1

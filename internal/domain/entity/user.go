@@ -27,6 +27,8 @@ type RegisterResponse struct {
 }
 
 type JWTResponse struct {
-	Token     string    `json:"token"`
-	ExpiredAt time.Time `json:"created_at"`
+	Token                 string `json:"token"`
+	TokenExpiredAt        string `json:"token_expired_at"`
+	RefreshToken          string `json:"refresh_token"`
+	RefreshTokenExpiredAt string `json:"refresh_token_expired_at"`
 }

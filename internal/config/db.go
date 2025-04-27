@@ -7,8 +7,11 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
+
+var RedisClient *redis.Client
 
 func Connect() *sql.DB {
 	ticker := 1
@@ -46,4 +49,12 @@ func Connect() *sql.DB {
 
 		return db
 	}
+}
+
+func InitRedis() {
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr:     "redis:6379",
+		Password: "default",
+		DB:       1,
+	})
 }

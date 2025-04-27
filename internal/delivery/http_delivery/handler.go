@@ -11,8 +11,8 @@ func NewHandler() *gin.Engine {
 	router := gin.Default()
 
 	logrus.Info("setup handler")
-
 	config.Connect()
+	go config.InitRedis()
 
 	return router
 }
