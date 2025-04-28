@@ -14,3 +14,11 @@ func CommitOrRollback(tx *sql.Tx) {
 		}
 	}
 }
+
+func BeginTransaction(db *sql.DB) (*sql.Tx, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}

@@ -1,10 +1,10 @@
 package usecases
 
 import (
-	"auth/internal/config"
 	"auth/internal/domain/entity"
-	domain_interface "auth/internal/domain/interface"
+	"auth/internal/domain/interface"
 	"auth/pkg/helper"
+	"auth/pkg/middleware"
 	"context"
 	"database/sql"
 	"errors"
@@ -19,195 +19,195 @@ import (
 )
 
 type UserUseCase struct {
-	userService domain_interface.UserServiceInterface
-	dB          *sql.DB
-	validator   *validator.Validate
+	UserService  interfaces.UserServiceInterface
+	TokenService interfaces.TokenRepsitoryInterface
+	DB           *sql.DB
+	validator    *validator.Validate
 }
 
-func NewUserUseCase(userService domain_interface.UserServiceInterface, DB *sql.DB) *UserUseCase {
+func NewUserUseCase(userService interfaces.UserServiceInterface, tokenService interfaces.TokenRepsitoryInterface, DB *sql.DB, validator *validator.Validate) *UserUseCase {
 	return &UserUseCase{
-		userService: userService,
-		dB:          DB,
+		UserService:  userService,
+		DB:           DB,
+		TokenService: tokenService,
+		validator:    validator,
 	}
 }
 
 func (s *UserUseCase) Register(payload *entity.RegisterPayload) (*entity.RegisterResponse, error) {
-	tx, err := s.dB.Begin()
-	if err != nil {
-		return nil, err
-	}
-
-	defer helper.CommitOrRollback(tx)
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
-
-	if err := s.validator.Struct(payload); err != nil {
-		return nil, err
-	}
-
 	ctx := context.Background()
-	if _, err := s.userService.GetByEmail(ctx, tx, payload.Email); err == nil {
-		return nil, errors.New("email already exists")
-	}
 
-	hashedPassword, err := helper.GenerateHashPassword(payload.Password)
-	if err != nil {
+	var registerResp *entity.RegisterResponse
+	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
+		if err := s.validator.Struct(payload); err != nil {
+			return err
+		}
+
+		ctx := context.Background()
+
+		logrus.Info("checking if email already exists")
+		if _, err := s.UserService.GetByEmail(ctx, tx, payload.Email); err == nil {
+			return errors.New("email already exists")
+		}
+
+		hashedPassword, err := helper.GenerateHashPassword(payload.Password)
+		if err != nil {
+			return err
+		}
+
+		newUser := &entity.User{
+			Name:     payload.Name,
+			Email:    payload.Email,
+			Password: string(hashedPassword),
+		}
+
+		logrus.Info("insert new user to database")
+		err = s.UserService.Create(ctx, tx, newUser)
+		if err != nil {
+			return err
+		}
+
+		registerResp = &entity.RegisterResponse{
+			Message: "User registered successfully",
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
-	newUser := &entity.User{
-		Name:     payload.Name,
-		Email:    payload.Email,
-		Password: string(hashedPassword),
-	}
-
-	err = s.userService.Create(ctx, tx, newUser)
-	if err != nil {
-		return nil, err
-	}
-
-	return &entity.RegisterResponse{
-		Message: "User registered successfully",
-	}, nil
+	return registerResp, nil
 }
 
 func (s *UserUseCase) Login(payload *entity.LoginPayload) (*entity.JWTResponse, error) {
-	tx, err := s.dB.Begin()
-	if err != nil {
-		return nil, err
-	}
-
-	defer helper.CommitOrRollback(tx)
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
-
-	logrus.Info("get user by email")
 	ctx := context.Background()
-	user, err := s.userService.GetByEmail(ctx, tx, payload.Email)
-	if err != nil {
+
+	var jwtResp *entity.JWTResponse
+	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
+		logrus.Info("get user by email")
+		user, err := s.UserService.GetByEmail(ctx, tx, payload.Email)
+		if err != nil {
+			return fmt.Errorf("email not found")
+		}
+
+		logrus.Info("compare password")
+		if !helper.ComparePassword(user.Password, []byte(payload.Password)) {
+			return errors.New("invalid password")
+		}
+
+		accessToken, err := helper.GenerateToken(user.ID, "user", 1, 0, 0)
+		if err != nil {
+			return err
+		}
+
+		refreshToken, err := helper.GenerateToken(user.ID, "user", 0, 3, 0)
+		if err != nil {
+			return err
+		}
+
+		logrus.Info("save refresh token to database")
+		err = s.TokenService.SaveToken(ctx, tx, &entity.RefreshToken{
+			UserID:                user.ID,
+			RefreshToken:          refreshToken,
+			RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0),
+		})
+		if err != nil {
+			return err
+		}
+		logrus.Info("refresh token created successfully and saved to database")
+
+		jwtResp = &entity.JWTResponse{
+			Token:                 fmt.Sprintf("Bearer %s", accessToken),
+			TokenExpiredAt:        time.Now().AddDate(1, 0, 0).Format("2006-01-02 15:04:05"),
+			RefreshToken:          fmt.Sprintf("Bearer %s", refreshToken),
+			RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0).Format("2006-01-02 15:04:05"),
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
-	logrus.Info("compare password")
-	if !helper.ComparePassword(user.Password, []byte(payload.Password)) {
-		return nil, errors.New("invalid password")
-	}
-
-	accessToken, err := helper.GenerateToken(user.ID, "user", 1, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	refreshToken, err := helper.GenerateToken(user.ID, "user", 0, 3, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	return &entity.JWTResponse{
-		Token:                 fmt.Sprintf("Bearer %s", accessToken),
-		TokenExpiredAt:        time.Now().AddDate(1, 0, 0).Format("2006-01-02 15:04:05"),
-		RefreshToken:          fmt.Sprintf("Bearer %s", refreshToken),
-		RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0).Format("2006-01-02 15:04:05"),
-	}, nil
+	return jwtResp, nil
 }
 
 func (s *UserUseCase) GetUserByID(id int) (*entity.User, error) {
-	tx, err := s.dB.Begin()
-	if err != nil {
-		return nil, err
-	}
-
-	defer helper.CommitOrRollback(tx)
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
-
 	ctx := context.Background()
-	user, err := s.userService.GetByID(ctx, tx, id)
-	if err != nil {
+
+	var userResp *entity.User
+	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
+		logrus.Info("find user by id")
+		user, err := s.UserService.GetByID(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+		userResp = user
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return userResp, nil
 }
 
 func (s *UserUseCase) DeleteUser(payload *entity.User) error {
-	tx, err := s.dB.Begin()
-	if err != nil {
-		return err
-	}
-
-	defer helper.CommitOrRollback(tx)
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
-
 	ctx := context.Background()
-	err = s.userService.Delete(ctx, tx, payload.ID)
-	if err != nil {
+
+	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
+		logrus.Info("delete user")
+		if err := s.UserService.Delete(ctx, tx, payload.ID); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
+	logrus.Info("user deleted successfully")
 
 	return nil
 }
 
-func (s *UserUseCase) Logout(bearerToken string) error {
-	tx, err := s.dB.Begin()
-	if err != nil {
-		return err
-	}
+func (s *UserUseCase) Logout(refreshBearerToken string) error {
+	ctx := context.Background()
 
-	defer helper.CommitOrRollback(tx)
-	defer func() {
+	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
+		logrus.Info("validating refresh token")
+
+		refreshToken := strings.Split(refreshBearerToken, " ")[1]
+		token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return []byte(os.Getenv("SECRET_KEY")), nil
+		})
+		if err != nil || !token.Valid {
+			return errors.New("invalid token")
+		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return fmt.Errorf("invalid claims")
+		}
+
+		expAt := int64(claims["exp"].(float64))
+		if time.Now().Unix() > expAt {
+			return fmt.Errorf("access token expired")
+		}
+
+		logrus.Info("getting refresh token from database")
+
+		refreshDatabaseToken, err := s.TokenService.GetTokenByRefresh(ctx, tx, refreshToken)
 		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
+			return fmt.Errorf("refresh token expired, please login again")
 		}
-	}()
 
-	stringToken := strings.Split(bearerToken, " ")[1]
-	token, err := jwt.ParseWithClaims(stringToken, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		logrus.Info("delete refresh token from database")
+
+		if err := s.TokenService.DeleteToken(ctx, tx, refreshDatabaseToken.ID); err != nil {
+			return err
 		}
-		return []byte(os.Getenv("SECRET_KEY")), nil
-	})
-	if err != nil || !token.Valid {
-		return errors.New("invalid token")
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return fmt.Errorf("invalid claims")
-	}
 
-	expAt := int64(claims["exp"].(float64))
-	if time.Now().Unix() > expAt {
-		return fmt.Errorf("acces token expired")
-	}
-
-	logrus.Info("blacklist token")
-	ttl := time.Until(time.Unix(expAt, 0))
-	redisKey := "blacklist:" + strings.Split(stringToken, " ")[1]
-	if err := config.RedisClient.Set(context.Background(), redisKey, "revoked", ttl).Err(); err != nil {
+		return nil
+	}); err != nil {
 		return err
 	}
 

@@ -1,4 +1,4 @@
-package domain_interface
+package interfaces
 
 import (
 	"auth/internal/domain/entity"
@@ -31,4 +31,9 @@ type UserUsecaseInterface interface {
 	DeleteUser(payload int) error
 }
 
-type TokenRepsitoryInterface interface{}
+type TokenRepsitoryInterface interface {
+	SaveToken(ctx context.Context, tx *sql.Tx, refreshToken *entity.RefreshToken) error
+	GetTokenByRefresh(ctx context.Context, tx *sql.Tx, refreshToken string) (*entity.RefreshToken, error)
+	GetTokensByUserID(ctx context.Context, tx *sql.Tx, userID int) ([]*entity.RefreshToken, error)
+	DeleteToken(ctx context.Context, tx *sql.Tx, tokenID int) error
+}

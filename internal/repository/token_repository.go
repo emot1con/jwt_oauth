@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 )
 
 type TokenRepository struct {
@@ -19,54 +18,24 @@ func NewTokenRepository(db *sql.DB) *TokenRepository {
 }
 
 // SaveToken saves a new token to the database
-func (r *TokenRepository) SaveToken(ctx context.Context, tx *sql.Tx, userID int, accessToken, refreshToken string, accessExpiry, refreshExpiry time.Time) error {
+func (r *TokenRepository) SaveToken(ctx context.Context, tx *sql.Tx, refreshToken *entity.RefreshToken) error {
 	query := `
         INSERT INTO auth_tokens (
             user_id, 
-            access_token, 
             refresh_token, 
-            access_token_expires_at, 
             refresh_token_expires_at
-        ) VALUES ($1, $2, $3, $4, $5)
+        ) VALUES ($1, $2, $3)
     `
 
 	_, err := tx.ExecContext(
 		ctx,
 		query,
-		userID,
-		accessToken,
-		refreshToken,
-		accessExpiry,
-		refreshExpiry,
+		refreshToken.UserID,
+		refreshToken.RefreshToken,
+		refreshToken.RefreshTokenExpiredAt,
 	)
 
 	return err
-}
-
-// GetTokenByAccess retrieves a token by access token
-func (r *TokenRepository) GetTokenByAccess(ctx context.Context, tx *sql.Tx, accessToken string) (*entity.RefreshToken, error) {
-	query := `
-        SELECT id, user_id, refresh_token, refresh_token_expires_at
-        FROM auth_tokens
-        WHERE access_token = $1
-    `
-
-	token := &entity.RefreshToken{}
-	err := tx.QueryRowContext(ctx, query, accessToken).Scan(
-		&token.ID,
-		&token.UserID,
-		&token.RefreshToken,
-		&token.RefreshTokenExpiredAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("token not found")
-		}
-		return nil, err
-	}
-
-	return token, nil
 }
 
 // GetTokenByRefresh retrieves a token by refresh token
@@ -131,32 +100,6 @@ func (r *TokenRepository) GetTokensByUserID(ctx context.Context, tx *sql.Tx, use
 	}
 
 	return tokens, nil
-}
-
-// UpdateToken updates an existing token
-func (r *TokenRepository) UpdateToken(ctx context.Context, tx *sql.Tx, tokenID int, accessToken string, accessExpiry time.Time) error {
-	query := `
-        UPDATE auth_tokens
-        SET access_token = $1, 
-            access_token_expires_at = $2
-        WHERE id = $3
-    `
-
-	result, err := tx.ExecContext(ctx, query, accessToken, accessExpiry, tokenID)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return errors.New("no rows affected, token might not exist")
-	}
-
-	return nil
 }
 
 // DeleteToken deletes a token by its ID
