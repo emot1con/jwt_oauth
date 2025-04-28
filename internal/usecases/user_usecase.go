@@ -20,12 +20,17 @@ import (
 
 type UserUseCase struct {
 	UserService  interfaces.UserServiceInterface
-	TokenService interfaces.TokenRepsitoryInterface
+	TokenService interfaces.TokenServiceInterface
 	DB           *sql.DB
 	validator    *validator.Validate
 }
 
-func NewUserUseCase(userService interfaces.UserServiceInterface, tokenService interfaces.TokenRepsitoryInterface, DB *sql.DB, validator *validator.Validate) *UserUseCase {
+func NewUserUseCase(
+	userService interfaces.UserServiceInterface,
+	tokenService interfaces.TokenServiceInterface,
+	DB *sql.DB,
+	validator *validator.Validate,
+) *UserUseCase {
 	return &UserUseCase{
 		UserService:  userService,
 		DB:           DB,
@@ -54,15 +59,10 @@ func (s *UserUseCase) Register(payload *entity.RegisterPayload) (*entity.Registe
 		if err != nil {
 			return err
 		}
-
-		newUser := &entity.User{
-			Name:     payload.Name,
-			Email:    payload.Email,
-			Password: string(hashedPassword),
-		}
+		payload.Password = string(hashedPassword)
 
 		logrus.Info("insert new user to database")
-		err = s.UserService.Create(ctx, tx, newUser)
+		err = s.UserService.Create(ctx, tx, payload)
 		if err != nil {
 			return err
 		}
@@ -105,11 +105,11 @@ func (s *UserUseCase) Login(payload *entity.LoginPayload) (*entity.JWTResponse, 
 		}
 
 		logrus.Info("save refresh token to database")
-		err = s.TokenService.SaveToken(ctx, tx, &entity.RefreshToken{
+		err = s.TokenService.SaveToken(&entity.RefreshToken{
 			UserID:                user.ID,
 			RefreshToken:          refreshToken,
 			RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0),
-		})
+		}, tx, ctx)
 		if err != nil {
 			return err
 		}
@@ -150,12 +150,12 @@ func (s *UserUseCase) GetUserByID(id int) (*entity.User, error) {
 	return userResp, nil
 }
 
-func (s *UserUseCase) DeleteUser(payload *entity.User) error {
+func (s *UserUseCase) DeleteUser(ID int) error {
 	ctx := context.Background()
 
 	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
 		logrus.Info("delete user")
-		if err := s.UserService.Delete(ctx, tx, payload.ID); err != nil {
+		if err := s.UserService.Delete(ctx, tx, ID); err != nil {
 			return err
 		}
 		return nil
@@ -195,14 +195,14 @@ func (s *UserUseCase) Logout(refreshBearerToken string) error {
 
 		logrus.Info("getting refresh token from database")
 
-		refreshDatabaseToken, err := s.TokenService.GetTokenByRefresh(ctx, tx, refreshToken)
+		refreshDatabaseToken, err := s.TokenService.GetTokenByRefresh(refreshToken, tx, ctx)
 		if err != nil {
 			return fmt.Errorf("refresh token expired, please login again")
 		}
 
 		logrus.Info("delete refresh token from database")
 
-		if err := s.TokenService.DeleteToken(ctx, tx, refreshDatabaseToken.ID); err != nil {
+		if err := s.TokenService.DeleteToken(refreshDatabaseToken.ID, tx, ctx); err != nil {
 			return err
 		}
 

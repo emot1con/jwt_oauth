@@ -17,16 +17,16 @@ func NewUserService(userRepository interfaces.UserRepositoryInterface) *UserServ
 	}
 }
 
-func (s *UserService) Create(payload *entity.RegisterPayload, tx *sql.Tx) (*entity.RegisterResponse, error) {
+func (s *UserService) Create(ctx context.Context, tx *sql.Tx, payload *entity.RegisterPayload) error {
 	if err := s.userRepository.Create(context.Background(), tx, &entity.User{
 		Email:    payload.Email,
 		Name:     payload.Name,
 		Password: payload.Password,
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	return &entity.RegisterResponse{Message: "User registered successfully"}, nil
+	return nil
 }
 
 func (s *UserService) GetByID(ctx context.Context, tx *sql.Tx, id int) (*entity.User, error) {

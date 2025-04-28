@@ -8,31 +8,27 @@ import (
 )
 
 type TokenService struct {
-	repo interfaces.TokenRepsitoryInterface
-	Tx   *sql.Tx
-	ctx  context.Context
+	repo interfaces.TokenRepositoryInterface
 }
 
-func NewTokenService(repo interfaces.TokenRepsitoryInterface, DB *sql.Tx, ctx context.Context) *TokenService {
+func NewTokenService(repo interfaces.TokenRepositoryInterface) *TokenService {
 	return &TokenService{
 		repo: repo,
-		Tx:   DB,
-		ctx:  ctx,
 	}
 }
 
-func (s *TokenService) SaveToken(refreshToken *entity.RefreshToken) error {
-	return s.repo.SaveToken(s.ctx, s.Tx, refreshToken)
+func (s *TokenService) SaveToken(refreshToken *entity.RefreshToken, Tx *sql.Tx, ctx context.Context) error {
+	return s.repo.SaveToken(ctx, Tx, refreshToken)
 }
 
-func (s *TokenService) GetTokenByRefresh(refreshToken string) (*entity.RefreshToken, error) {
-	return s.repo.GetTokenByRefresh(s.ctx, s.Tx, refreshToken)
+func (s *TokenService) GetTokenByRefresh(refreshToken string, Tx *sql.Tx, ctx context.Context) (*entity.RefreshToken, error) {
+	return s.repo.GetTokenByRefresh(ctx, Tx, refreshToken)
 }
 
-func (s *TokenService) GetTokensByUserID(userID int) ([]*entity.RefreshToken, error) {
-	return s.repo.GetTokensByUserID(s.ctx, s.Tx, userID)
+func (s *TokenService) GetTokensByUserID(userID int, Tx *sql.Tx, ctx context.Context) ([]*entity.RefreshToken, error) {
+	return s.repo.GetTokensByUserID(ctx, Tx, userID)
 }
 
-func (s *TokenService) DeleteToken(tokenID int) error {
-	return s.repo.DeleteToken(s.ctx, s.Tx, tokenID)
+func (s *TokenService) DeleteToken(tokenID int, Tx *sql.Tx, ctx context.Context) error {
+	return s.repo.DeleteToken(ctx, Tx, tokenID)
 }

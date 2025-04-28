@@ -15,25 +15,32 @@ type UserRepositoryInterface interface {
 }
 
 type UserServiceInterface interface {
-	Create(ctx context.Context, tx *sql.Tx, user *entity.User) error
+	Create(ctx context.Context, tx *sql.Tx, payload *entity.RegisterPayload) error
 	GetByID(ctx context.Context, tx *sql.Tx, id int) (*entity.User, error)
 	GetByEmail(ctx context.Context, tx *sql.Tx, email string) (*entity.User, error)
 	Update(ctx context.Context, tx *sql.Tx, user *entity.User) error
 	Delete(ctx context.Context, tx *sql.Tx, id int) error
-	RefreshToken(ctx context.Context, refreshToken string) (string, error)
+	// RefreshToken(ctx context.Context, refreshToken string) (string, error)
 }
 
 type UserUsecaseInterface interface {
 	Register(payload *entity.RegisterPayload) (*entity.RegisterResponse, error)
 	Login(payload *entity.LoginPayload) (*entity.JWTResponse, error)
-	GetUserByID(payload int) (entity.User, error)
+	GetUserByID(payload int) (*entity.User, error)
 	Logout(bearerToken string) error
 	DeleteUser(payload int) error
 }
 
-type TokenRepsitoryInterface interface {
+type TokenRepositoryInterface interface {
 	SaveToken(ctx context.Context, tx *sql.Tx, refreshToken *entity.RefreshToken) error
 	GetTokenByRefresh(ctx context.Context, tx *sql.Tx, refreshToken string) (*entity.RefreshToken, error)
 	GetTokensByUserID(ctx context.Context, tx *sql.Tx, userID int) ([]*entity.RefreshToken, error)
 	DeleteToken(ctx context.Context, tx *sql.Tx, tokenID int) error
+}
+
+type TokenServiceInterface interface {
+	SaveToken(refreshToken *entity.RefreshToken, Tx *sql.Tx, ctx context.Context) error
+	GetTokenByRefresh(refreshToken string, Tx *sql.Tx, ctx context.Context) (*entity.RefreshToken, error)
+	GetTokensByUserID(userID int, Tx *sql.Tx, ctx context.Context) ([]*entity.RefreshToken, error)
+	DeleteToken(tokenID int, Tx *sql.Tx, ctx context.Context) error
 }

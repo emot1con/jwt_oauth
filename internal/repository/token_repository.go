@@ -8,13 +8,10 @@ import (
 )
 
 type TokenRepository struct {
-	DB *sql.DB
 }
 
-func NewTokenRepository(db *sql.DB) *TokenRepository {
-	return &TokenRepository{
-		DB: db,
-	}
+func NewTokenRepository() *TokenRepository {
+	return &TokenRepository{}
 }
 
 // SaveToken saves a new token to the database

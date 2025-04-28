@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"auth/internal/services"
 	"context"
 	"fmt"
 	"net/http"
@@ -14,14 +13,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-/// AuthWithJWT is a middleware function that checks the JWT token in the request header.
-// This middlware ware checks if the token is valid and not expired. If valid, it sets the user ID and role in the context.
-
 type contextKey string
 
 var UserKey contextKey = "userID"
 
-func ProtectedEndpoint(s services.TokenService) gin.HandlerFunc {
+// / ProtectedEnpoint is a middleware function that checks the JWT token in the request header.
+// This middlware ware checks if the token is valid and not expired. If valid, it sets the user ID and role in the context.
+func ProtectedEndpoint() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 
@@ -63,13 +61,6 @@ func ProtectedEndpoint(s services.TokenService) gin.HandlerFunc {
 		userID, err := strconv.Atoi(userIDClaims)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Can't convert userID to int"})
-			c.Abort()
-			return
-		}
-
-		_, err = s.GetTokenByRefresh(tokenString)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
 			c.Abort()
 			return
 		}
