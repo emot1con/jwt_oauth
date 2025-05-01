@@ -29,12 +29,12 @@ func (c *UserController) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 	{
 		auth.POST("/register", c.Register)
 		auth.POST("/login", c.Login)
-		auth.POST("/logout", c.Logout)
 	}
 
 	user := router.Group("/user")
 	user.Use(authMiddleware)
 	{
+		user.POST("/logout", c.Logout)
 		user.GET("/profile", c.GetProfile)
 		user.DELETE("/delete", c.DeleteAccount)
 	}
@@ -85,6 +85,7 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 	logrus.Info("handling get profile request")
 
 	id, exists := ctx.Get("userID")
+	logrus.Error("handling get profile request", id)
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
@@ -112,18 +113,15 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 
 // DeleteAccount handles user account deletion
 func (c *UserController) DeleteAccount(ctx *gin.Context) {
-	logrus.Info("handling delete account request")
-
 	// Get user ID from context (set by auth middleware)
-	logrus.Info("user ID from context")
-
 	paramID, exists := ctx.Get("userID")
+
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	logrus.Info("changin type of user ID")
+	logrus.Info("change type of user ID")
 	userID, err := helper.ChangeID(paramID)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user ID is not valid"})
@@ -144,15 +142,21 @@ func (c *UserController) DeleteAccount(ctx *gin.Context) {
 // Logout handles user logout
 func (c *UserController) Logout(ctx *gin.Context) {
 	logrus.Info("handling logout request")
-
-	refreshToken := ctx.GetHeader("Authorization")
-	if refreshToken == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "refresh token is required"})
+	paramID, exists := ctx.Get("userID")
+	logrus.Error("handling logout request", paramID)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	err := c.userUsecase.Logout(refreshToken)
+	logrus.Info("change type of user ID")
+	userID, err := helper.ChangeID(paramID)
 	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user ID is not valid"})
+		return
+	}
+
+	if err := c.userUsecase.Logout(userID); err != nil {
 		logrus.Error("error logging out: ", err)
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return

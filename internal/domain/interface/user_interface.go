@@ -26,9 +26,9 @@ type UserServiceInterface interface {
 type UserUsecaseInterface interface {
 	Register(payload *entity.RegisterPayload) (*entity.RegisterResponse, error)
 	Login(payload *entity.LoginPayload) (*entity.JWTResponse, error)
-	GetUserByID(payload int) (*entity.User, error)
-	Logout(bearerToken string) error
-	DeleteUser(payload int) error
+	GetUserByID(ID int) (*entity.User, error)
+	Logout(ID int) error
+	DeleteUser(ID int) error
 }
 
 type TokenRepositoryInterface interface {

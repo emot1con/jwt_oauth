@@ -10,12 +10,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/sirupsen/logrus"
 )
 
@@ -174,44 +171,11 @@ func (s *UserUseCase) DeleteUser(ID int) error {
 	return nil
 }
 
-func (s *UserUseCase) Logout(refreshBearerToken string) error {
+func (s *UserUseCase) Logout(ID int) error {
 	ctx := context.Background()
-
 	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
-		logrus.Info("validating refresh token")
-
-		refreshToken := strings.Split(refreshBearerToken, " ")[1]
-
-		token, err := jwt.Parse(refreshToken, func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-			}
-			return []byte(os.Getenv("SECRET_KEY")), nil
-		})
-		if err != nil || !token.Valid {
-			return errors.New("invalid token")
-		}
-
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			return fmt.Errorf("invalid claims")
-		}
-
-		expAt := int64(claims["exp"].(float64))
-		if time.Now().Unix() > expAt {
-			return fmt.Errorf("access token expired")
-		}
-
-		logrus.Info("getting refresh token from database")
-
-		refreshDatabaseToken, err := s.TokenService.GetTokenByRefresh(refreshToken, tx, ctx)
-		if err != nil {
-			return err
-		}
-
-		logrus.Info("delete refresh token from database")
-
-		if err := s.TokenService.DeleteToken(refreshDatabaseToken.UserID, tx, ctx); err != nil {
+		logrus.Info("delete tokens that belongs to user")
+		if err := s.TokenService.DeleteToken(ID, tx, ctx); err != nil {
 			return err
 		}
 

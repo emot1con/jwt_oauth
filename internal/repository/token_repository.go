@@ -7,8 +7,7 @@ import (
 	"errors"
 )
 
-type TokenRepository struct {
-}
+type TokenRepository struct{}
 
 func NewTokenRepository() *TokenRepository {
 	return &TokenRepository{}
@@ -117,7 +116,7 @@ func (r *TokenRepository) DeleteToken(ctx context.Context, tx *sql.Tx, tokenID i
 	}
 
 	if rowsAffected == 0 {
-		return errors.New("no rows affected, token might not exist")
+		return errors.New("invalid token")
 	}
 
 	return nil
