@@ -154,8 +154,13 @@ func (s *UserUseCase) GetUserByID(id int) (*entity.User, error) {
 
 func (s *UserUseCase) DeleteUser(ID int) error {
 	ctx := context.Background()
-
 	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
+
+		logrus.Info("delete tokens that belongs to user")
+		if err := s.TokenService.DeleteToken(ID, tx, ctx); err != nil {
+			return err
+		}
+
 		logrus.Info("delete user")
 		if err := s.UserService.Delete(ctx, tx, ID); err != nil {
 			return err

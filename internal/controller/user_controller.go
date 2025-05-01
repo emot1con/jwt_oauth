@@ -6,7 +6,6 @@ import (
 	"auth/internal/services"
 	"auth/pkg/helper"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -37,7 +36,7 @@ func (c *UserController) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 	user.Use(authMiddleware)
 	{
 		user.GET("/profile", c.GetProfile)
-		user.DELETE("/account", c.DeleteAccount)
+		user.DELETE("/delete", c.DeleteAccount)
 	}
 }
 
@@ -116,20 +115,23 @@ func (c *UserController) DeleteAccount(ctx *gin.Context) {
 	logrus.Info("handling delete account request")
 
 	// Get user ID from context (set by auth middleware)
-	userID, exists := ctx.Get("userID")
+	logrus.Info("user ID from context")
+
+	paramID, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	// Convert userID to int
-	id, err := strconv.Atoi(userID.(string))
+	logrus.Info("changin type of user ID")
+	userID, err := helper.ChangeID(paramID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user ID"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user ID is not valid"})
 		return
 	}
 
-	err = c.userUsecase.DeleteUser(id)
+	logrus.Info("delete user")
+	err = c.userUsecase.DeleteUser(userID)
 	if err != nil {
 		logrus.Error("error deleting user account: ", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
