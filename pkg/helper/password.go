@@ -1,6 +1,8 @@
 package helper
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"golang.org/x/crypto/bcrypt"
+)
 
 func GenerateHashPassword(password string) ([]byte, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -11,10 +13,19 @@ func GenerateHashPassword(password string) ([]byte, error) {
 	return hashedPassword, nil
 }
 
-func ComparePassword(password string, hashedPassword []byte) bool {
-	if err := bcrypt.CompareHashAndPassword(hashedPassword, []byte(password)); err != nil {
-		return false
-	}
+// func ComparePassword(hashedPassword string, password []byte) bool {
+// 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), password); err != nil {
+// 		logrus.Error("error comparing password: ", err)
+// 		return false
+// 	}
 
-	return true
+// 	return true
+// }
+
+func ComparePassword(hashedPassword string, plainPassword []byte) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), plainPassword)
+	if err != nil {
+		return err
+	}
+	return nil
 }

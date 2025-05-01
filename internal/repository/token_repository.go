@@ -38,8 +38,8 @@ func (r *TokenRepository) SaveToken(ctx context.Context, tx *sql.Tx, refreshToke
 // GetTokenByRefresh retrieves a token by refresh token
 func (r *TokenRepository) GetTokenByRefresh(ctx context.Context, tx *sql.Tx, refreshToken string) (*entity.RefreshToken, error) {
 	query := `
-        SELECT id, user_id, access_token, refresh_token, 
-               access_token_expires_at, refresh_token_expires_at
+        SELECT id, user_id, refresh_token, 
+                refresh_token_expires_at
         FROM auth_tokens
         WHERE refresh_token = $1
     `
@@ -103,7 +103,7 @@ func (r *TokenRepository) GetTokensByUserID(ctx context.Context, tx *sql.Tx, use
 func (r *TokenRepository) DeleteToken(ctx context.Context, tx *sql.Tx, tokenID int) error {
 	query := `
         DELETE FROM auth_tokens
-        WHERE id = $1
+        WHERE user_id = $1
     `
 
 	result, err := tx.ExecContext(ctx, query, tokenID)

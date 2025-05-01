@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -18,13 +20,13 @@ func NewUserRepository() *UserRepository { return &UserRepository{} }
 
 // Create inserts a new user into the database
 func (r *UserRepository) Create(ctx context.Context, tx *sql.Tx, user *entity.User) error {
+	logrus.Info("inserting new user to database repository")
 	query := `
-		INSERT INTO users (id, email, password, name)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (email, password, name)
+		VALUES ($1, $2, $3)
 	`
 
 	_, err := tx.ExecContext(ctx, query,
-		user.ID,
 		user.Email,
 		user.Password,
 		user.Name,

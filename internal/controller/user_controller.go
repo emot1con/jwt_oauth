@@ -4,6 +4,7 @@ import (
 	"auth/internal/domain/entity"
 	"auth/internal/domain/interface"
 	"auth/internal/services"
+	"auth/pkg/helper"
 	"net/http"
 	"strconv"
 
@@ -84,21 +85,19 @@ func (c *UserController) Login(ctx *gin.Context) {
 func (c *UserController) GetProfile(ctx *gin.Context) {
 	logrus.Info("handling get profile request")
 
-	// Get user ID from context (set by auth middleware)
-	userID, exists := ctx.Get("userID")
+	id, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	// Convert userID to int
-	id, err := strconv.Atoi(userID.(string))
+	userID, err := helper.ChangeID(id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user ID"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "not valid user ID"})
 		return
 	}
 
-	user, err := c.userUsecase.GetUserByID(id)
+	user, err := c.userUsecase.GetUserByID(userID)
 	if err != nil {
 		logrus.Error("error getting user profile: ", err)
 		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})

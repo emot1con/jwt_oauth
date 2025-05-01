@@ -18,12 +18,12 @@ func Connect() *sql.DB {
 
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_Name")
+	dbName := os.Getenv("DB_NAME")
 
 	logrus.Info("connecting to postgres")
+	DSN := fmt.Sprintf("host=postgres user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=Asia/Jakarta", dbUser, dbPassword, dbName)
 
 	for {
-		DSN := fmt.Sprintf("host=postgres user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=Asia/Jakarta", dbUser, dbPassword, dbName)
 		db, err := sql.Open("pgx", DSN)
 
 		if ticker >= 5 {

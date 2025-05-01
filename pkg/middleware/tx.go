@@ -15,13 +15,18 @@ func WithTransaction(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error)
 		if p := recover(); p != nil {
 			tx.Rollback()
 			panic(p)
-		} else if err != nil {
-			tx.Rollback()
-		} else {
-			err = tx.Commit()
 		}
 	}()
 
-	err = fn(tx)
-	return err
+	if err := fn(tx); err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return rbErr
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
 }

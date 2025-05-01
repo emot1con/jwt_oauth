@@ -5,6 +5,8 @@ import (
 	"auth/internal/domain/interface"
 	"context"
 	"database/sql"
+
+	"github.com/sirupsen/logrus"
 )
 
 type UserService struct {
@@ -18,6 +20,7 @@ func NewUserService(userRepository interfaces.UserRepositoryInterface) *UserServ
 }
 
 func (s *UserService) Create(ctx context.Context, tx *sql.Tx, payload *entity.RegisterPayload) error {
+	logrus.Infof("inserting new user to database service %s", payload.Email)
 	if err := s.userRepository.Create(context.Background(), tx, &entity.User{
 		Email:    payload.Email,
 		Name:     payload.Name,

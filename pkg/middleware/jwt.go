@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -35,7 +34,7 @@ func ProtectedEndpoint() gin.HandlerFunc {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(os.Getenv("JWT_SECRET")), nil
+			return []byte(os.Getenv("SECRET_KEY")), nil
 		})
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
@@ -57,17 +56,12 @@ func ProtectedEndpoint() gin.HandlerFunc {
 			return
 		}
 
-		userIDClaims := claims["userID"].(string)
-		userID, err := strconv.Atoi(userIDClaims)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Can't convert userID to int"})
-			c.Abort()
-			return
-		}
+		userID := int64(claims["userID"].(float64))
 
 		ctx := c.Request.Context()
 		ctx = context.WithValue(ctx, UserKey, userID)
 		c.Request = c.Request.WithContext(ctx)
+		c.Set("userID", userID)
 
 		c.Next()
 	}

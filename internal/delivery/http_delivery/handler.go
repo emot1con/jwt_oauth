@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 func NewHandler() *gin.Engine {
@@ -18,6 +19,11 @@ func NewHandler() *gin.Engine {
 	validator := validator.New()
 
 	DB := config.Connect()
+
+	if DB == nil {
+		logrus.Panic("failed to connect to database")
+	}
+
 	config.InitRedis()
 
 	userRepo := repository.NewUserRepository()

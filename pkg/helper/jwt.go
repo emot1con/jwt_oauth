@@ -9,11 +9,11 @@ import (
 
 func GenerateToken(id int, role string, days, months, years int) (string, error) {
 	expirationTime := time.Now().AddDate(years, months, days).Unix()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.MapClaims{
-		"userID": id,
-		"exp":    expirationTime,
-		"role":   role,
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": id,
+		"exp":     expirationTime,
+		"role":    role,
 	})
 
-	return token.SignedString(os.Getenv("SECRET_KEY"))
+	return token.SignedString([]byte(os.Getenv("SECRET_KEY")))
 }

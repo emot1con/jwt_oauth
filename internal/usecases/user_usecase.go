@@ -3,6 +3,7 @@ package usecases
 import (
 	"auth/internal/domain/entity"
 	"auth/internal/domain/interface"
+	"auth/internal/repository"
 	"auth/pkg/helper"
 	"auth/pkg/middleware"
 	"context"
@@ -51,8 +52,11 @@ func (s *UserUseCase) Register(payload *entity.RegisterPayload) (*entity.Registe
 		ctx := context.Background()
 
 		logrus.Info("checking if email already exists")
-		if _, err := s.UserService.GetByEmail(ctx, tx, payload.Email); err == nil {
+		_, err := s.UserService.GetByEmail(ctx, tx, payload.Email)
+		if err == nil {
 			return errors.New("email already exists")
+		} else if err != sql.ErrNoRows && err != repository.ErrUserNotFound {
+			return err
 		}
 
 		hashedPassword, err := helper.GenerateHashPassword(payload.Password)
@@ -62,8 +66,7 @@ func (s *UserUseCase) Register(payload *entity.RegisterPayload) (*entity.Registe
 		payload.Password = string(hashedPassword)
 
 		logrus.Info("insert new user to database")
-		err = s.UserService.Create(ctx, tx, payload)
-		if err != nil {
+		if err := s.UserService.Create(ctx, tx, payload); err != nil {
 			return err
 		}
 
@@ -89,9 +92,8 @@ func (s *UserUseCase) Login(payload *entity.LoginPayload) (*entity.JWTResponse, 
 			return fmt.Errorf("email not found")
 		}
 
-		logrus.Info("compare password")
-		if !helper.ComparePassword(user.Password, []byte(payload.Password)) {
-			return errors.New("invalid password")
+		if err := helper.ComparePassword(user.Password, []byte(payload.Password)); err != nil {
+			return errors.New("wrong password")
 		}
 
 		accessToken, err := helper.GenerateToken(user.ID, "user", 1, 0, 0)
@@ -174,7 +176,8 @@ func (s *UserUseCase) Logout(refreshBearerToken string) error {
 		logrus.Info("validating refresh token")
 
 		refreshToken := strings.Split(refreshBearerToken, " ")[1]
-		token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
+
+		token, err := jwt.Parse(refreshToken, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
@@ -183,6 +186,7 @@ func (s *UserUseCase) Logout(refreshBearerToken string) error {
 		if err != nil || !token.Valid {
 			return errors.New("invalid token")
 		}
+
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			return fmt.Errorf("invalid claims")
@@ -197,12 +201,12 @@ func (s *UserUseCase) Logout(refreshBearerToken string) error {
 
 		refreshDatabaseToken, err := s.TokenService.GetTokenByRefresh(refreshToken, tx, ctx)
 		if err != nil {
-			return fmt.Errorf("refresh token expired, please login again")
+			return err
 		}
 
 		logrus.Info("delete refresh token from database")
 
-		if err := s.TokenService.DeleteToken(refreshDatabaseToken.ID, tx, ctx); err != nil {
+		if err := s.TokenService.DeleteToken(refreshDatabaseToken.UserID, tx, ctx); err != nil {
 			return err
 		}
 
