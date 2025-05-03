@@ -6,6 +6,7 @@ import (
 	"auth/internal/services"
 	"auth/pkg/helper"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -80,6 +81,12 @@ func (c *UserController) Login(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
+// func (c *UserController) RefreshToken(ctx *gin.Context) {
+// 	logrus.Info("handling refresh token request")
+
+// 	var payload entity.Refresh
+// }
+
 // GetProfile handles getting user profile
 func (c *UserController) GetProfile(ctx *gin.Context) {
 	logrus.Info("handling get profile request")
@@ -142,6 +149,9 @@ func (c *UserController) DeleteAccount(ctx *gin.Context) {
 // Logout handles user logout
 func (c *UserController) Logout(ctx *gin.Context) {
 	logrus.Info("handling logout request")
+	header := ctx.GetHeader("Authorization")
+	token := strings.Split(header, " ")
+
 	paramID, exists := ctx.Get("userID")
 	logrus.Error("handling logout request", paramID)
 	if !exists {
@@ -156,7 +166,7 @@ func (c *UserController) Logout(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.userUsecase.Logout(userID); err != nil {
+	if err := c.userUsecase.Logout(userID, token[1]); err != nil {
 		logrus.Error("error logging out: ", err)
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return

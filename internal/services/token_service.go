@@ -25,8 +25,24 @@ func (s *TokenService) GetTokenByRefresh(refreshToken string, Tx *sql.Tx, ctx co
 	return s.repo.GetTokenByRefresh(ctx, Tx, refreshToken)
 }
 
-func (s *TokenService) GetTokensByUserID(userID int, Tx *sql.Tx, ctx context.Context) ([]*entity.RefreshToken, error) {
-	return s.repo.GetTokensByUserID(ctx, Tx, userID)
+func (s *TokenService) GetTokenByUserID(userID int, Tx *sql.Tx, ctx context.Context) (*entity.RefreshToken, error) {
+	return s.repo.GetTokenByUserID(ctx, Tx, userID)
+}
+
+func (s *TokenService) UpdateToken(payloadToken *entity.RefreshToken, Tx *sql.Tx, ctx context.Context) error {
+	DBToken, err := s.repo.GetTokenByUserID(ctx, Tx, payloadToken.UserID)
+	if err != nil {
+		return err
+	}
+
+	token := &entity.RefreshToken{
+		ID:                    DBToken.ID,
+		UserID:                DBToken.UserID,
+		RefreshToken:          payloadToken.RefreshToken,
+		RefreshTokenExpiredAt: payloadToken.RefreshTokenExpiredAt,
+	}
+
+	return s.repo.UpdateToken(ctx, Tx, token)
 }
 
 func (s *TokenService) DeleteToken(tokenID int, Tx *sql.Tx, ctx context.Context) error {

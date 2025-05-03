@@ -25,6 +25,7 @@ func NewHandler() *gin.Engine {
 	}
 
 	config.InitRedis()
+	logrus.Info("connected to redis")
 
 	userRepo := repository.NewUserRepository()
 	tokenRepo := repository.NewTokenRepository()

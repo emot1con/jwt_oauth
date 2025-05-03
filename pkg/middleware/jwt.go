@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"auth/pkg/helper"
 	"context"
 	"fmt"
 	"net/http"
@@ -48,6 +49,13 @@ func ProtectedEndpoint() gin.HandlerFunc {
 			return
 		}
 
+		blacklisted, _ := helper.IsTokenBlacklisted(tokenString)
+		if blacklisted {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token has been revoked"})
+			c.Abort()
+			return
+		}
+
 		logrus.Info("parsing token")
 
 		claims, ok := token.Claims.(jwt.MapClaims)
@@ -65,20 +73,12 @@ func ProtectedEndpoint() gin.HandlerFunc {
 			return
 		}
 
-		logrus.Info("get user id")
-
 		userID := int64(claims["user_id"].(float64))
-		logrus.Info("get user ID from token successfully")
 
-		logrus.Info("send id to context")
 		ctx := c.Request.Context()
-		logrus.Info("send id to context 2")
 		ctx = context.WithValue(ctx, UserKey, userID)
-		logrus.Info("send id to context 3")
 		c.Request = c.Request.WithContext(ctx)
-		logrus.Info("send id to context 4")
 		c.Set("userID", userID)
-		logrus.Info("send id to context 5")
 
 		c.Next()
 	}

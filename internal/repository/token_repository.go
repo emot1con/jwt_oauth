@@ -61,41 +61,63 @@ func (r *TokenRepository) GetTokenByRefresh(ctx context.Context, tx *sql.Tx, ref
 	return token, nil
 }
 
-// GetTokensByUserID retrieves all tokens for a user
-func (r *TokenRepository) GetTokensByUserID(ctx context.Context, tx *sql.Tx, userID int) ([]*entity.RefreshToken, error) {
+// GetTokenByUserID retrieves the most recent token for a user
+func (r *TokenRepository) GetTokenByUserID(ctx context.Context, tx *sql.Tx, userID int) (*entity.RefreshToken, error) {
 	query := `
-        SELECT id, user_id, access_token, refresh_token, 
-               access_token_expires_at, refresh_token_expires_at
+        SELECT id, user_id, refresh_token, refresh_token_expires_at
         FROM auth_tokens
         WHERE user_id = $1
+        ORDER BY refresh_token_expires_at DESC
+        LIMIT 1
     `
 
-	rows, err := tx.QueryContext(ctx, query, userID)
+	token := &entity.RefreshToken{}
+	err := tx.QueryRowContext(ctx, query, userID).Scan(
+		&token.ID,
+		&token.UserID,
+		&token.RefreshToken,
+		&token.RefreshTokenExpiredAt,
+	)
+
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tokens []*entity.RefreshToken
-	for rows.Next() {
-		token := &entity.RefreshToken{}
-		err := rows.Scan(
-			&token.ID,
-			&token.UserID,
-			&token.RefreshToken,
-			&token.RefreshTokenExpiredAt,
-		)
-		if err != nil {
-			return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil // Return nil instead of error when no token is found
 		}
-		tokens = append(tokens, token)
-	}
-
-	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return tokens, nil
+	return token, nil
+}
+
+func (r *TokenRepository) UpdateToken(ctx context.Context, tx *sql.Tx, token *entity.RefreshToken) error {
+	query := `
+        UPDATE auth_tokens 
+        SET refresh_token = $1, 
+            refresh_token_expires_at = $2
+        WHERE id = $3
+    `
+
+	result, err := tx.ExecContext(
+		ctx,
+		query,
+		token.RefreshToken,
+		token.RefreshTokenExpiredAt,
+		token.ID,
+	)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("token not found")
+	}
+
+	return nil
 }
 
 // DeleteToken deletes a token by its ID
