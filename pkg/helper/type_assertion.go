@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func ChangeID(idValue interface{}) (int, error) {
+func FormatIDToInt(idValue interface{}) (int, error) {
 	switch v := idValue.(type) {
 	case int:
 		return v, nil

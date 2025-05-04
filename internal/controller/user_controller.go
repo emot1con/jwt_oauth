@@ -2,7 +2,7 @@ package controller
 
 import (
 	"auth/internal/domain/entity"
-	"auth/internal/domain/interface"
+	interfaces "auth/internal/domain/interface"
 	"auth/internal/services"
 	"auth/pkg/helper"
 	"net/http"
@@ -38,6 +38,7 @@ func (c *UserController) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 		user.POST("/logout", c.Logout)
 		user.GET("/profile", c.GetProfile)
 		user.DELETE("/delete", c.DeleteAccount)
+		user.POST("/refresh", c.RefreshToken)
 	}
 }
 
@@ -81,11 +82,34 @@ func (c *UserController) Login(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
-// func (c *UserController) RefreshToken(ctx *gin.Context) {
-// 	logrus.Info("handling refresh token request")
+func (c *UserController) RefreshToken(ctx *gin.Context) {
+	logrus.Info("handling refresh token request")
 
-// 	var payload entity.Refresh
-// }
+	id, exist := ctx.Get("userID")
+	if !exist {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, err := helper.FormatIDToInt(id)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "not valid user ID"})
+		return
+
+	}
+
+	header := ctx.GetHeader("Authorization")
+	refreshToken := strings.Split(header, " ")
+	refreshtokenResponse, err := c.userUsecase.RefreshToken(refreshToken[1], userID)
+
+	if err != nil {
+		logrus.Error("error refreshing token: ", err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, refreshtokenResponse)
+}
 
 // GetProfile handles getting user profile
 func (c *UserController) GetProfile(ctx *gin.Context) {
@@ -98,7 +122,7 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 		return
 	}
 
-	userID, err := helper.ChangeID(id)
+	userID, err := helper.FormatIDToInt(id)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "not valid user ID"})
 		return
@@ -121,22 +145,24 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 // DeleteAccount handles user account deletion
 func (c *UserController) DeleteAccount(ctx *gin.Context) {
 	// Get user ID from context (set by auth middleware)
-	paramID, exists := ctx.Get("userID")
+	header := ctx.GetHeader("Authorization")
+	token := strings.Split(header, " ")
 
+	paramID, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
 	logrus.Info("change type of user ID")
-	userID, err := helper.ChangeID(paramID)
+	userID, err := helper.FormatIDToInt(paramID)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user ID is not valid"})
 		return
 	}
 
 	logrus.Info("delete user")
-	err = c.userUsecase.DeleteUser(userID)
+	err = c.userUsecase.DeleteUser(userID, token[1])
 	if err != nil {
 		logrus.Error("error deleting user account: ", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -160,7 +186,7 @@ func (c *UserController) Logout(ctx *gin.Context) {
 	}
 
 	logrus.Info("change type of user ID")
-	userID, err := helper.ChangeID(paramID)
+	userID, err := helper.FormatIDToInt(paramID)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user ID is not valid"})
 		return

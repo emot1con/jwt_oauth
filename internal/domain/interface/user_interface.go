@@ -27,8 +27,8 @@ type UserUsecaseInterface interface {
 	Login(payload *entity.LoginPayload) (*entity.JWTResponse, error)
 	GetUserByID(ID int) (*entity.User, error)
 	Logout(ID int, token string) error
-	RefreshToken(refreshToken string) (*entity.JWTResponse, error)
-	DeleteUser(ID int) error
+	RefreshToken(refreshToken string, userID int) (*entity.JWTResponse, error)
+	DeleteUser(ID int, token string) error
 }
 
 type TokenRepositoryInterface interface {

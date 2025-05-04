@@ -163,7 +163,52 @@ func (s *UserUseCase) GetUserByID(id int) (*entity.User, error) {
 	return userResp, nil
 }
 
-func (s *UserUseCase) DeleteUser(ID int) error {
+func (s *UserUseCase) RefreshToken(refreshToken string, userID int) (*entity.JWTResponse, error) {
+	ctx := context.Background()
+
+	var token *entity.JWTResponse
+
+	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
+		logrus.Info("generate new token")
+		accessToken, err := helper.GenerateToken(userID, "user", 1, 0, 0)
+		if err != nil {
+			return err
+		}
+
+		refreshToken, err = helper.GenerateToken(userID, "user", 0, 3, 0)
+		if err != nil {
+			return err
+		}
+
+		newToken := &entity.RefreshToken{
+			UserID:                userID,
+			RefreshToken:          refreshToken,
+			RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0),
+		}
+
+		logrus.Info("update previous refresh token")
+		if err := s.TokenService.UpdateToken(newToken, tx, ctx); err != nil {
+			return err
+		}
+
+		logrus.Info("new refresh token saved to database")
+
+		token = &entity.JWTResponse{
+			Token:                 fmt.Sprintf("Bearer %s", accessToken),
+			TokenExpiredAt:        time.Now().AddDate(1, 0, 0).Format("2006-01-02 15:04:05"),
+			RefreshToken:          fmt.Sprintf("Bearer %s", refreshToken),
+			RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0).Format("2006-01-02 15:04:05"),
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return token, nil
+}
+
+func (s *UserUseCase) DeleteUser(ID int, token string) error {
 	ctx := context.Background()
 	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
 
@@ -174,6 +219,10 @@ func (s *UserUseCase) DeleteUser(ID int) error {
 
 		logrus.Info("delete user")
 		if err := s.UserService.Delete(ctx, tx, ID); err != nil {
+			return err
+		}
+
+		if err := helper.AddToBlacklist(token); err != nil {
 			return err
 		}
 		return nil
@@ -202,46 +251,4 @@ func (s *UserUseCase) Logout(ID int, token string) error {
 	}
 
 	return nil
-}
-
-func (s *UserUseCase) RefreshToken(refreshToken string) (*entity.JWTResponse, error) {
-	ctx := context.Background()
-
-	var token *entity.JWTResponse
-
-	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
-		accessToken, err := helper.GenerateToken(0, "user", 1, 0, 0)
-		if err != nil {
-			return err
-		}
-
-		refreshToken, err = helper.GenerateToken(0, "user", 1, 0, 0)
-		if err != nil {
-			return err
-		}
-
-		newToken := &entity.RefreshToken{
-			RefreshToken:          refreshToken,
-			RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0),
-		}
-
-		if err := s.TokenService.UpdateToken(newToken, tx, ctx); err != nil {
-			return err
-		}
-
-		logrus.Info("new refresh token saved to database")
-
-		token = &entity.JWTResponse{
-			Token:                 fmt.Sprintf("Bearer %s", accessToken),
-			TokenExpiredAt:        time.Now().AddDate(1, 0, 0).Format("2006-01-02 15:04:05"),
-			RefreshToken:          fmt.Sprintf("Bearer %s", refreshToken),
-			RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0).Format("2006-01-02 15:04:05"),
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return token, nil
 }
