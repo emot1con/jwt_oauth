@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Auth System</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="dashboard-container">
+            <div class="dashboard-header">
+                <h1>Dashboard</h1>
+                <button id="logout-btn" class="btn btn-danger">Logout</button>
+            </div>
+            <div class="profile-section">
+                <h2>Profile Information</h2>
+                <div class="profile-details">
+                    <div><strong>Name:</strong> <span id="user-name">Loading...</span></div>
+                    <div><strong>Email:</strong> <span id="user-email">Loading...</span></div>
+                    <div><strong>ID:</strong> <span id="user-id">Loading...</span></div>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="refresh-token-btn" class="btn">Refresh Token</button>
+                <button id="delete-account-btn" class="btn btn-danger">Delete Account</button>
+            </div>
+        </div>
+    </div>    <script src="js/config.js"></script>
+    <script src="js/spinner.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

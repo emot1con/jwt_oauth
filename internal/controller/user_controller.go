@@ -32,6 +32,17 @@ func (c *UserController) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 		auth.POST("/login", c.Login)
 	}
 
+	oauth := router.Group("/oauth")
+	{
+		oauth.GET("/google")
+		oauth.GET("/facebook")
+		oauth.GET("/github")
+
+		oauth.POST("/google/callback")
+		oauth.POST("/facebook/callback")
+		oauth.POST("/github/callback")
+	}
+
 	user := router.Group("/user")
 	user.Use(authMiddleware)
 	{
@@ -44,6 +55,17 @@ func (c *UserController) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 
 // Register handles user registration
 func (c *UserController) Register(ctx *gin.Context) {
+	isLimit, err := helper.RateLimiter(ctx, "register_req")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isLimit {
+		ctx.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	logrus.Info("handling register request")
 
 	var payload entity.RegisterPayload
@@ -64,6 +86,18 @@ func (c *UserController) Register(ctx *gin.Context) {
 
 // Login handles user login
 func (c *UserController) Login(ctx *gin.Context) {
+
+	isLimit, err := helper.RateLimiter(ctx, "login_req")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isLimit {
+		ctx.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	logrus.Info("handling login request")
 
 	var payload entity.LoginPayload
@@ -83,6 +117,18 @@ func (c *UserController) Login(ctx *gin.Context) {
 }
 
 func (c *UserController) RefreshToken(ctx *gin.Context) {
+
+	isLimit, err := helper.RateLimiter(ctx, "refresh_token_req")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isLimit {
+		ctx.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	logrus.Info("handling refresh token request")
 
 	id, exist := ctx.Get("userID")
@@ -113,6 +159,18 @@ func (c *UserController) RefreshToken(ctx *gin.Context) {
 
 // GetProfile handles getting user profile
 func (c *UserController) GetProfile(ctx *gin.Context) {
+
+	isLimit, err := helper.RateLimiter(ctx, "get_profile_req")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isLimit {
+		ctx.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	logrus.Info("handling get profile request")
 
 	id, exists := ctx.Get("userID")
@@ -135,6 +193,8 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 		return
 	}
 
+	logrus.Info("user profile founded")
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"id":    user.ID,
 		"name":  user.Name,
@@ -144,6 +204,18 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 
 // DeleteAccount handles user account deletion
 func (c *UserController) DeleteAccount(ctx *gin.Context) {
+
+	isLimit, err := helper.RateLimiter(ctx, "delete_account_req")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isLimit {
+		ctx.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	// Get user ID from context (set by auth middleware)
 	header := ctx.GetHeader("Authorization")
 	token := strings.Split(header, " ")
@@ -174,6 +246,17 @@ func (c *UserController) DeleteAccount(ctx *gin.Context) {
 
 // Logout handles user logout
 func (c *UserController) Logout(ctx *gin.Context) {
+	isLimit, err := helper.RateLimiter(ctx, "logout_req")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !isLimit {
+		ctx.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	logrus.Info("handling logout request")
 	header := ctx.GetHeader("Authorization")
 	token := strings.Split(header, " ")

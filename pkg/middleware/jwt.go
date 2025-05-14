@@ -64,7 +64,6 @@ func ProtectedEndpoint() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		logrus.Info("token suscessfully parsed: ", claims)
 
 		expiredAt := int64(claims["exp"].(float64))
 		if time.Now().Unix() > expiredAt {

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Callback - Auth System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/oauth.css">
+    <script src="js/config.js"></script>
+    <script src="js/spinner.js"></script>
+    <script src="js/oauth.js"></script>
+    <script>
+        // Extract parameters from URL
+        function getParamsFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                code: params.get('code'),
+                state: params.get('state'),
+                error: params.get('error'),
+                error_description: params.get('error_description')
+            };
+        }
+
+        // Process the OAuth callback
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = getParamsFromUrl();
+            const statusElement = document.getElementById('status');
+            const errorElement = document.getElementById('error');
+            
+            // Check for errors
+            if (params.error) {
+                errorElement.textContent = `Authentication error: ${params.error}`;
+                if (params.error_description) {
+                    errorElement.textContent += ` - ${params.error_description}`;
+                }
+                statusElement.textContent = 'Authentication failed';
+                return;
+            }
+            
+            // Check for authorization code
+            if (params.code && params.state) {
+                statusElement.textContent = 'Processing authentication...';
+                
+                // Process the callback using our OAuth handler
+                const success = oauthHandler.processCallback(params);
+                
+                if (!success) {
+                    statusElement.textContent = 'Authentication failed';
+                    errorElement.textContent = 'Invalid state parameter. Authentication rejected.';
+                }
+            } else {
+                statusElement.textContent = 'Authentication failed';
+                errorElement.textContent = 'Missing required parameters (code or state).';
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">            <h1>OAuth Authentication</h1>
+            <p id="status">Processing your authentication request...</p>
+            <div id="error" class="error-message"></div>
+            
+            <div class="oauth-container">
+                <div class="loader"></div>
+                <p class="small-text">If you are not redirected automatically, <a href="dashboard.html">click here</a></p>
+            </div>
+            
+            <style>
+                .loader {
+                    border: 5px solid #f3f3f3;
+                    border-top: 5px solid #3498db;
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    animation: spin 1s linear infinite;
+                    margin: 20px auto;
+                }
+                
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                
+                .small-text {
+                    font-size: 14px;
+                    color: #666;
+                    margin-top: 20px;
+                }
+            </style>
+        </div>
+    </div>
+</body>
+</html>

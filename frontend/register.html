@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Auth System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/oauth.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1>Register</h1>
+            <div id="error-message" class="error-message"></div>            <div class="oauth-container">
+                <div class="oauth-buttons">
+                    <button id="google-register" class="oauth-btn google-btn">
+                        <img src="img/oauth/google.svg" alt="Google"> Sign up with Google
+                    </button>
+                    <button id="github-register" class="oauth-btn github-btn">
+                        <img src="img/oauth/github.svg" alt="GitHub"> Sign up with GitHub
+                    </button>
+                    <button id="facebook-register" class="oauth-btn facebook-btn">
+                        <img src="img/oauth/facebook.svg" alt="Facebook"> Sign up with Facebook
+                    </button>
+                </div>
+                <div class="oauth-divider">or</div>
+            </div>
+            
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn">Register</button>
+                </div>
+            </form>
+            <div class="form-footer">
+                <p>Already have an account? <a href="login.html">Login</a></p>
+                <p><a href="index.html">Back to Home</a></p>
+            </div>
+        </div>
+    </div>    <script src="js/config.js"></script>
+    <script src="js/spinner.js"></script>
+    <script src="js/oauth.js"></script>
+    <script src="js/register.js"></script>
+</body>
+</html>

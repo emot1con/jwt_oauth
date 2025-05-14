@@ -1,0 +1,71 @@
+/* OAuth button styles */
+.oauth-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.oauth-divider {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.oauth-divider::before,
+.oauth-divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #ddd;
+    margin: 0 10px;
+}
+
+.oauth-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.oauth-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.2s;
+    border: none;
+    font-size: 14px;
+    width: 100%;
+}
+
+.oauth-btn:hover {
+    opacity: 0.9;
+}
+
+.oauth-btn img {
+    height: 20px;
+    margin-right: 10px;
+}
+
+.google-btn {
+    background-color: #DB4437;
+}
+
+.github-btn {
+    background-color: #333;
+}
+
+.facebook-btn {
+    background-color: #3b5998;
+}
+
+@media screen and (max-width: 576px) {
+    .oauth-btn {
+        padding: 12px;
+    }
+}
