@@ -47,10 +47,12 @@ func (s *UserService) Update(ctx context.Context, tx *sql.Tx, payload *entity.Us
 	}
 
 	return s.userRepository.Update(ctx, tx, &entity.User{
-		ID:       user.ID,
-		Name:     payload.Name,
-		Email:    payload.Email,
-		Password: payload.Password,
+		ID:         user.ID,
+		Name:       payload.Name,
+		Email:      payload.Email,
+		Password:   payload.Password,
+		Provider:   payload.Provider,
+		ProviderID: payload.ProviderID,
 	})
 }
 

@@ -22,14 +22,16 @@ func NewUserRepository() *UserRepository { return &UserRepository{} }
 func (r *UserRepository) Create(ctx context.Context, tx *sql.Tx, user *entity.User) error {
 	logrus.Info("inserting new user to database repository")
 	query := `
-		INSERT INTO users (email, password, name)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (email, password, name, provider, provider_id)
+		VALUES ($1, $2, $3, $4, $5)
 	`
 
 	_, err := tx.ExecContext(ctx, query,
 		user.Email,
 		user.Password,
 		user.Name,
+		user.Provider,
+		user.ProviderID,
 	)
 
 	return err
@@ -93,14 +95,16 @@ func (r *UserRepository) GetByEmail(ctx context.Context, tx *sql.Tx, email strin
 func (r *UserRepository) Update(ctx context.Context, tx *sql.Tx, user *entity.User) error {
 	query := `
 		UPDATE users
-		SET email = $1, password = $2, name = $3, updated_at = $4
-		WHERE id = $5
+		SET email = $1, password = $2, name = $3, provider = $4, provoder_id = $5 updated_at = $6
+		WHERE id = $7
 	`
 
 	_, err := tx.ExecContext(ctx, query,
 		user.Email,
 		user.Password,
 		user.Name,
+		user.Provider,
+		user.ProviderID,
 		time.Now(),
 		user.ID,
 	)

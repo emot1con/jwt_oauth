@@ -1,7 +1,7 @@
 package main
 
 import (
-	"auth/internal/delivery/http_delivery"
+	"auth/internal/delivery"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,7 +13,7 @@ import (
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 
-	handler := httpdelivery.NewHandler()
+	handler := delivery.NewHandler()
 
 	srv := http.Server{
 		Addr:    os.Getenv("SERVER_PORT"),
