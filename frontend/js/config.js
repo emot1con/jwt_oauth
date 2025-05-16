@@ -19,12 +19,11 @@ const config = {
         PROFILE: '/user/profile',
         REFRESH_TOKEN: '/user/refresh',
         DELETE_ACCOUNT: '/user/delete',
-        
-        // OAuth endpoints (to be implemented on the backend)
-        OAUTH_GOOGLE: '/auth/google',
-        OAUTH_GITHUB: '/auth/github',
-        OAUTH_FACEBOOK: '/auth/facebook',
-        OAUTH_CALLBACK: '/auth/oauth/callback'
+          // OAuth endpoints
+        OAUTH_GOOGLE: '/oauth/google',
+        OAUTH_GITHUB: '/oauth/github',
+        OAUTH_FACEBOOK: '/oauth/facebook',
+        OAUTH_CALLBACK: '/oauth/callback'
     },
       // OAuth configuration
     OAUTH: {

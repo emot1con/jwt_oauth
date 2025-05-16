@@ -22,46 +22,28 @@ class OAuthHandler {
     generateRandomState() {
         return Math.random().toString(36).substring(2, 15) + 
                Math.random().toString(36).substring(2, 15);
-    }
-      // Initiate OAuth login flow
+    }    // Initiate OAuth login flow
     initiateOAuth(provider) {
         // Show loading spinner
         loadingSpinner.show();
         
-        // Store state in local storage for validation on callback
-        localStorage.setItem('oauth_state', this.state);
+        // Store provider in local storage for callback identification
+        localStorage.setItem('oauth_provider', provider);
         
-        // Get correct authorization URL based on provider
-        let authUrl;
-        switch (provider) {
-            case 'google':
-                authUrl = this.buildGoogleAuthUrl();
-                break;
-            case 'github':
-                authUrl = this.buildGithubAuthUrl();
-                break;
-            case 'facebook':
-                authUrl = this.buildFacebookAuthUrl();
-                break;
-            default:
-                loadingSpinner.hide();
-                alert(`Unknown provider: ${provider}`);
-                return;
-        }
+        // Redirect to the backend's OAuth endpoints which handle OAuth flow
+        console.log(`Initiating ${provider} OAuth flow`);
         
-        // For demonstration, show a message before continuing
-        setTimeout(() => {
+        // Redirect to the appropriate OAuth provider endpoint
+        if (provider === 'google') {
+            window.location.href = this.endpoints.google;
+        } else if (provider === 'github') {
+            window.location.href = this.endpoints.github;
+        } else if (provider === 'facebook') {
+            window.location.href = this.endpoints.facebook;
+        } else {
             loadingSpinner.hide();
-            
-            // In a real implementation with backend support, open OAuth window
-            if (confirm(`This will redirect you to ${provider} for authentication.\n\nNote: This is just a frontend demonstration. The OAuth flow won't complete without backend implementation.`)) {
-                // When backend is implemented, this would open the auth window
-                // const authWindow = window.open(authUrl, `${provider}Auth`, this.windowSettings);
-                
-                // For now, just demonstrate the auth URL format
-                console.log(`Auth URL for ${provider}:`, authUrl);
-            }
-        }, 500);
+            alert(`Unknown provider: ${provider}`);
+        }
     }
     
     // Build Google OAuth URL
@@ -104,55 +86,67 @@ class OAuthHandler {
         });
         
         return `${facebookAuthUrl}?${params.toString()}`;
-    }
-      // Process OAuth callback from the backend
+    }    // Process OAuth callback from the provider
     processCallback(params) {
-        // Verify state to prevent CSRF attacks
-        const savedState = localStorage.getItem('oauth_state');
-        if (params.state !== savedState) {
-            alert('Invalid state parameter. Authentication rejected.');
+        // If there's an error in the params, show it
+        if (params.error) {
+            loadingSpinner.hide();
             return false;
         }
         
-        // Remove state from storage after verification
-        localStorage.removeItem('oauth_state');
+        // Get the code from the URL params
+        const code = params.code;
+        const provider = localStorage.getItem('oauth_provider') || 'google';
+        localStorage.removeItem('oauth_provider');
         
-        // Show loading spinner while exchanging code for token
-        loadingSpinner.show();
+        console.log(`Processing ${provider} OAuth callback with code: ${code}`);
         
-        // In a real implementation, we would exchange the code for a token via backend
-        // For now, let's simulate the process
-        setTimeout(() => {
-            // Simulate token exchange success
-            const demoToken = "demo_oauth_token_" + Math.random().toString(36).substring(2);
-            
-            // Store token in local storage
-            localStorage.setItem(config.STORAGE_KEYS.TOKEN, demoToken);
-            
-            // Hide spinner and redirect
-            loadingSpinner.hide();
-            window.location.href = 'dashboard.html';
-        }, 1000);
-        
-        return true;
-    }
-    
-    // Exchange authorization code for access token (would be handled by backend)
+        // Exchange the code for a token with the backend
+        return this.exchangeCodeForToken(provider, code)
+            .then(data => {
+                console.log('OAuth token response:', data);
+                
+                // Store tokens in local storage
+                localStorage.setItem(config.STORAGE_KEYS.TOKEN, data.token);
+                localStorage.setItem(config.STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+                localStorage.setItem(config.STORAGE_KEYS.TOKEN_EXPIRY, data.token_expired_at);
+                localStorage.setItem(config.STORAGE_KEYS.REFRESH_TOKEN_EXPIRY, data.refresh_token_expired_at);
+                
+                // Hide spinner and redirect to dashboard
+                loadingSpinner.hide();
+                window.location.href = 'dashboard.html';
+                return true;
+            })            .catch(error => {
+                console.error('OAuth error:', error);
+                loadingSpinner.hide();
+                alert('Authentication failed: ' + error.message);
+                return false;
+            });
+    }    // Exchange authorization code for access token
     exchangeCodeForToken(provider, code) {
-        // In a real implementation, this would make a request to the backend to exchange code
-        return fetch(`${config.API_URL}${config.ENDPOINTS.OAUTH_CALLBACK}`, {
+        // Provider-specific callback endpoints
+        const endpoints = {
+            google: `${config.API_URL}/oauth/google/callback`,
+            github: `${config.API_URL}/oauth/github/callback`,
+            facebook: `${config.API_URL}/oauth/facebook/callback`
+        };
+
+        // Show loading spinner
+        loadingSpinner.show();
+
+        // Send the code to the backend to exchange for a token
+        return fetch(endpoints[provider], {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                provider,
-                code
-            })
+            body: JSON.stringify({ code })
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to exchange code for token');
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Failed to exchange code for token');
+                });
             }
             return response.json();
         });

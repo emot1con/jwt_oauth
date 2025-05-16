@@ -95,7 +95,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, tx *sql.Tx, email strin
 func (r *UserRepository) Update(ctx context.Context, tx *sql.Tx, user *entity.User) error {
 	query := `
 		UPDATE users
-		SET email = $1, password = $2, name = $3, provider = $4, provoder_id = $5 updated_at = $6
+		SET email = $1, password = $2, name = $3, provider = $4, provider_id = $5, updated_at = $6
 		WHERE id = $7
 	`
 

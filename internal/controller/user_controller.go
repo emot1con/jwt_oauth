@@ -34,13 +34,13 @@ func (c *UserController) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 
 	oauth := router.Group("/oauth")
 	{
-		oauth.GET("/google")
+		oauth.GET("/google", c.OAuthGoogle)
 		oauth.GET("/facebook")
 		oauth.GET("/github")
 
-		oauth.POST("/google/callback")
-		oauth.POST("/facebook/callback")
-		oauth.POST("/github/callback")
+		oauth.GET("/google/callback", c.OAuthGoogleCallback)
+		oauth.GET("/facebook/callback")
+		oauth.GET("/github/callback")
 	}
 
 	user := router.Group("/user")

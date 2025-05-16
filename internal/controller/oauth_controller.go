@@ -34,20 +34,15 @@ func (c *UserController) OAuthGoogleCallback(ctx *gin.Context) {
 		return
 	}
 
-	token, err := config.OauthGoogleConfig.Exchange(ctx, code)
+	logrus.Info("usecase google auth")
+	jwtToken, err := c.userUsecase.GoogleAuth(code)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	client := config.OauthGoogleConfig.Client(ctx, token)
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v1/userinfo?alt=json")
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer resp.Body.Close()
+	logrus.Infof("getting client info from google successful with jwt: %s", jwtToken)
 
-	ctx.JSON(http.StatusOK, gin.H{"token": token})
+	ctx.JSON(http.StatusOK, jwtToken)
 	logrus.Info("google oauth callback successful")
 }

@@ -19,9 +19,7 @@
                 error: params.get('error'),
                 error_description: params.get('error_description')
             };
-        }
-
-        // Process the OAuth callback
+        }        // Process the OAuth callback
         document.addEventListener('DOMContentLoaded', function() {
             const params = getParamsFromUrl();
             const statusElement = document.getElementById('status');
@@ -38,16 +36,21 @@
             }
             
             // Check for authorization code
-            if (params.code && params.state) {
+            if (params.code) {
                 statusElement.textContent = 'Processing authentication...';
                 
                 // Process the callback using our OAuth handler
-                const success = oauthHandler.processCallback(params);
-                
-                if (!success) {
-                    statusElement.textContent = 'Authentication failed';
-                    errorElement.textContent = 'Invalid state parameter. Authentication rejected.';
-                }
+                oauthHandler.processCallback(params)
+                    .then(success => {
+                        if (!success) {
+                            statusElement.textContent = 'Authentication failed';
+                            errorElement.textContent = 'Failed to process authentication.';
+                        }
+                    })
+                    .catch(error => {
+                        statusElement.textContent = 'Authentication failed';
+                        errorElement.textContent = error.message || 'Failed to process authentication.';
+                    });
             } else {
                 statusElement.textContent = 'Authentication failed';
                 errorElement.textContent = 'Missing required parameters (code or state).';

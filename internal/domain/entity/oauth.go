@@ -1,5 +1,9 @@
 package entity
 
+import (
+	"encoding/json"
+)
+
 // OAuthUserData contains user information from OAuth providers
 type OAuthUserData struct {
 	ProviderID string `json:"provider_id"`
@@ -25,4 +29,35 @@ type OAuthConfig struct {
 	TokenURL     string `json:"token_url"`
 	UserInfoURL  string `json:"user_info_url"`
 	Scopes       string `json:"scopes"`
+}
+
+func (u *OAuthUserData) UnmarshalJSON(data []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Ambil provider ID dari "sub" atau "id"
+	if sub, ok := raw["sub"].(string); ok {
+		u.ProviderID = sub
+	} else if id, ok := raw["id"].(string); ok {
+		u.ProviderID = id
+	}
+
+	if provider, ok := raw["provider"].(string); ok {
+		u.Provider = provider
+	}
+	if email, ok := raw["email"].(string); ok {
+		u.Email = email
+	}
+	if name, ok := raw["name"].(string); ok {
+		u.Name = name
+	}
+	if avatar, ok := raw["picture"].(string); ok {
+		u.AvatarURL = avatar
+	} else if avatar, ok := raw["avatar_url"].(string); ok {
+		u.AvatarURL = avatar
+	}
+
+	return nil
 }

@@ -29,6 +29,20 @@ type UserUsecaseInterface interface {
 	Logout(ID int, token string) error
 	RefreshToken(refreshToken string, userID int) (*entity.JWTResponse, error)
 	DeleteUser(ID int, token string) error
+	// GoogleAuth handles OAuth authentication with Google
+	GoogleAuth(code string) (*entity.JWTResponse, error)
+
+	// // GitHubAuth handles OAuth authentication with GitHub
+	// GitHubAuth(code string) (*entity.JWTResponse, error)
+
+	// // FacebookAuth handles OAuth authentication with Facebook
+	// FacebookAuth(code string) (*entity.JWTResponse, error)
+
+	// // GetOAuthUser retrieves a user authenticated via OAuth
+	// GetOAuthUser(tx *sql.Tx, providerID string, provider string) (*entity.User, error)
+
+	// // CreateOAuthUser creates a new user based on OAuth data
+	// CreateOAuthUser(tx *sql.Tx, userData *entity.OAuthUserData) (*entity.User, error)
 }
 
 type TokenRepositoryInterface interface {
@@ -46,3 +60,7 @@ type TokenServiceInterface interface {
 	UpdateToken(token *entity.RefreshToken, Tx *sql.Tx, ctx context.Context) error
 	DeleteToken(tokenID int, Tx *sql.Tx, ctx context.Context) error
 }
+
+// type OAuthUsecaseInterface interface {
+
+// }
