@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/oauth.css">
     <script src="js/config.js"></script>
     <script src="js/spinner.js"></script>
-    <script src="js/oauth.js"></script>
     <script>
         // Extract parameters from URL
         function getParamsFromUrl() {
@@ -19,7 +18,9 @@
                 error: params.get('error'),
                 error_description: params.get('error_description')
             };
-        }        // Process the OAuth callback
+        }
+        
+        // Process the OAuth callback
         document.addEventListener('DOMContentLoaded', function() {
             const params = getParamsFromUrl();
             const statusElement = document.getElementById('status');
@@ -39,18 +40,150 @@
             if (params.code) {
                 statusElement.textContent = 'Processing authentication...';
                 
-                // Process the callback using our OAuth handler
-                oauthHandler.processCallback(params)
-                    .then(success => {
-                        if (!success) {
-                            statusElement.textContent = 'Authentication failed';
-                            errorElement.textContent = 'Failed to process authentication.';
-                        }
-                    })
-                    .catch(error => {
-                        statusElement.textContent = 'Authentication failed';
-                        errorElement.textContent = error.message || 'Failed to process authentication.';
-                    });
+                // Get the provider from localStorage or default to 'google'
+                const provider = localStorage.getItem('oauth_provider') || 'google';
+                
+                // Exchange the code for a token
+                const endpoints = {
+                    google: `${config.API_URL}/oauth/google/callback`,
+                    github: `${config.API_URL}/oauth/github/callback`,
+                    facebook: `${config.API_URL}/oauth/facebook/callback`
+                };
+                
+                // Show loading spinner
+                if (window.loadingSpinner) {
+                    window.loadingSpinner.show();
+                }
+                
+                console.log(`Processing ${provider} OAuth callback with code: ${params.code}`);
+                console.log(`Sending request to: ${endpoints[provider]}?code=${encodeURIComponent(params.code)}`);
+                
+                // Send the code to the backend to exchange for a token
+                fetch(endpoints[provider] + '?code=' + encodeURIComponent(params.code), {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to exchange code for token');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('OAuth successful, received data:', data);
+                    
+                    // Store tokens in local storage
+                    localStorage.setItem(config.STORAGE_KEYS.TOKEN, data.token);
+                    localStorage.setItem(config.STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+                    localStorage.setItem(config.STORAGE_KEYS.TOKEN_EXPIRY, data.token_expired_at);
+                    localStorage.setItem(config.STORAGE_KEYS.REFRESH_TOKEN_EXPIRY, data.refresh_token_expired_at);
+                    
+                    // Hide spinner
+                    if (window.loadingSpinner) {
+                        window.loadingSpinner.hide();
+                    }
+                    
+                    // Update status message
+                    statusElement.textContent = 'Authentication successful! Redirecting to dashboard...';
+                    
+                    console.log('Redirecting to dashboard...');
+                    // Redirect to dashboard
+                    window.location.replace('dashboard.html');
+                })
+                .catch(error => {
+                    console.error('OAuth error:', error);
+                    if (window.loadingSpinner) {
+                        window.loadingSpinner.hide();
+                    }
+                    statusElement.textContent = 'Authentication failed';
+                    errorElement.textContent = error.message;
+                });
+            } else {
+                statusElement.textContent = 'Authentication failed';
+                errorElement.textContent = 'Missing required parameters (code or state).';
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1>OAuth Authentication</h1>
+            <p id="status">Processing your authentication request...</p>
+            <div id="error" class="error-message"></div>
+            
+            <div class="oauth-container">
+                <div class="loader"></div>
+                <p class="small-text">If you are not redirected automatically, <a href="dashboard.html">click here</a></p>
+            </div>
+            
+            <style>
+                .loader {
+                    border: 5px solid #f3f3f3;
+                    border-top: 5px solid #3498db;
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    animation: spin 1s linear infinite;
+                    margin: 20px auto;
+                }
+                
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                
+                .small-text {
+                    font-size: 14px;
+                    color: #666;
+                    margin-top: 20px;
+                }
+            </style>
+        </div>
+    </div>
+</body>
+</html>
+                  // Send the code to the backend to exchange for a token
+                fetch(endpoints[provider] + '?code=' + encodeURIComponent(params.code), {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to exchange code for token');
+                        });
+                    }
+                    return response.json();                })                .then(data => {
+                    console.log('OAuth successful, received token data:', data);
+                    
+                    // Store tokens in local storage
+                    localStorage.setItem(config.STORAGE_KEYS.TOKEN, data.token);
+                    localStorage.setItem(config.STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+                    localStorage.setItem(config.STORAGE_KEYS.TOKEN_EXPIRY, data.token_expired_at);
+                    localStorage.setItem(config.STORAGE_KEYS.REFRESH_TOKEN_EXPIRY, data.refresh_token_expired_at);
+                    
+                    // Hide spinner
+                    loadingSpinner.hide();
+                    
+                    // Update status message
+                    statusElement.textContent = 'Authentication successful! Redirecting to dashboard...';
+                    
+                    // Redirect to dashboard immediately
+                    window.location.href = 'dashboard.html';
+                })
+                .catch(error => {
+                    console.error('OAuth error:', error);
+                    loadingSpinner.hide();
+                    statusElement.textContent = 'Authentication failed';
+                    errorElement.textContent = error.message;
+                });
             } else {
                 statusElement.textContent = 'Authentication failed';
                 errorElement.textContent = 'Missing required parameters (code or state).';

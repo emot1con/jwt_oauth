@@ -46,3 +46,41 @@ func (c *UserController) OAuthGoogleCallback(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, jwtToken)
 	logrus.Info("google oauth callback successful")
 }
+
+func (c *UserController) OAuthGithubCallback(ctx *gin.Context) {
+	code := ctx.Query("code")
+	if code == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing code"})
+		return
+	}
+	logrus.Info("usecase github auth")
+	jwtToken, err := c.userUsecase.GitHubAuth(code)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	logrus.Infof("getting client info from github successful with jwt: %s", jwtToken)
+
+	ctx.JSON(http.StatusOK, jwtToken)
+	logrus.Info("github oauth callback successful")
+}
+
+func (c *UserController) OAuthFacebookCallback(ctx *gin.Context) {
+	code := ctx.Query("code")
+	if code == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing code"})
+		return
+	}
+
+	logrus.Info("usecase facebook auth")
+	jwtToken, err := c.userUsecase.FacebookAuth(code)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	logrus.Infof("getting client info from facebook successful with jwt: %s", jwtToken)
+
+	ctx.JSON(http.StatusOK, jwtToken)
+	logrus.Info("facebook oauth callback successful")
+}

@@ -14,9 +14,11 @@ type User struct {
 }
 
 type RegisterPayload struct {
-	Name     string `json:"name" validate:"required,min=3"`
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=3"`
+	Name       string `json:"name" validate:"required,min=3"`
+	Email      string `json:"email" validate:"required,email"`
+	Password   string `json:"password" validate:"required,min=3"`
+	ProviderID string `json:"provider_id"`
+	Provider   string `json:"provider"`
 }
 
 type LoginPayload struct {

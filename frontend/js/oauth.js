@@ -16,14 +16,22 @@ class OAuthHandler {
         
         // Generate a random state for CSRF protection
         this.state = this.generateRandomState();
-    }
-    
-    // Generate a random state for CSRF protection
+    }    // Generate a random state for CSRF protection
     generateRandomState() {
         return Math.random().toString(36).substring(2, 15) + 
                Math.random().toString(36).substring(2, 15);
     }    // Initiate OAuth login flow
     initiateOAuth(provider) {
+        console.log('initiateOAuth called for provider:', provider);
+        
+        // Double-check if user is already logged in
+        const token = localStorage.getItem(config.STORAGE_KEYS.TOKEN);
+        if (token) {
+            console.log('User already has token, redirecting to dashboard');
+            window.location.replace('dashboard.html');
+            return;
+        }
+        
         // Show loading spinner
         loadingSpinner.show();
         
@@ -31,19 +39,10 @@ class OAuthHandler {
         localStorage.setItem('oauth_provider', provider);
         
         // Redirect to the backend's OAuth endpoints which handle OAuth flow
-        console.log(`Initiating ${provider} OAuth flow`);
+        console.log(`Initiating ${provider} OAuth flow, redirecting to:`, this.endpoints[provider]);
         
         // Redirect to the appropriate OAuth provider endpoint
-        if (provider === 'google') {
-            window.location.href = this.endpoints.google;
-        } else if (provider === 'github') {
-            window.location.href = this.endpoints.github;
-        } else if (provider === 'facebook') {
-            window.location.href = this.endpoints.facebook;
-        } else {
-            loadingSpinner.hide();
-            alert(`Unknown provider: ${provider}`);
-        }
+        window.location.href = this.endpoints[provider];
     }
     
     // Build Google OAuth URL

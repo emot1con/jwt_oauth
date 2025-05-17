@@ -25,7 +25,9 @@ func (s *UserService) Create(ctx context.Context, tx *sql.Tx, payload *entity.Re
 		Email:    payload.Email,
 		Name:     payload.Name,
 		Password: payload.Password,
+		Provider: payload.Provider,
 	}); err != nil {
+		logrus.Errorf("error inserting new user to database service error%s", err.Error())
 		return err
 	}
 

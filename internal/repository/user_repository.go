@@ -20,7 +20,7 @@ func NewUserRepository() *UserRepository { return &UserRepository{} }
 
 // Create inserts a new user into the database
 func (r *UserRepository) Create(ctx context.Context, tx *sql.Tx, user *entity.User) error {
-	logrus.Info("inserting new user to database repository")
+	logrus.Info("inserting new user to database repository with user: ", user)
 	query := `
 		INSERT INTO users (email, password, name, provider, provider_id)
 		VALUES ($1, $2, $3, $4, $5)

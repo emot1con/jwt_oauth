@@ -36,7 +36,7 @@ func InitOauth() {
 		ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
 		ClientSecret: os.Getenv("FACEBOOK_CLIENT_SECRET"),
 		RedirectURL:  os.Getenv("FACEBOOK_REDIRECT_URL"),
-		Scopes:       []string{"email", "public_profile"},
+		Scopes:       []string{"public_profile"},
 		Endpoint:     facebook.Endpoint,
 	}
 }
