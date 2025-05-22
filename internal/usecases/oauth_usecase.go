@@ -49,7 +49,9 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 		oauthUser.Provider = "Google"
 
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
-		if err == nil {
+		if err != nil && (err != sql.ErrNoRows && err != repository.ErrUserNotFound) {
+			return err
+		} else if userResp != nil {
 			userResp.Provider = "Google"
 			userResp.ProviderID = oauthUser.ProviderID
 
@@ -64,10 +66,7 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 			}
 
 			return nil
-		} else if err != sql.ErrNoRows && err != repository.ErrUserNotFound {
-			return err
 		}
-
 		logrus.Info("creating new user from google oauth", userResp.Email, userResp.Provider)
 		jwtResp, err = s.CreateUserWithResponse(oauthUser, tx, ctx)
 		if err != nil {
@@ -116,7 +115,10 @@ func (s *UserUseCase) GitHubAuth(code string) (*entity.JWTResponse, error) {
 
 		oauthUser.Provider = "GitHub"
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
-		if err == nil {
+		if err != nil && (err != sql.ErrNoRows && err != repository.ErrUserNotFound) {
+			logrus.Error("error get user by email 1: ", err)
+			return err
+		} else if userResp != nil {
 			logrus.Info("update user from github oauth", userResp)
 
 			userResp.Provider = "GitHub"
@@ -132,8 +134,6 @@ func (s *UserUseCase) GitHubAuth(code string) (*entity.JWTResponse, error) {
 			}
 
 			return nil
-		} else if err != sql.ErrNoRows && err != repository.ErrUserNotFound {
-			return err
 		}
 
 		parsedOauthUserModel := &entity.OAuthUserData{
@@ -191,7 +191,7 @@ func (s *UserUseCase) FacebookAuth(code string) (*entity.JWTResponse, error) {
 		logrus.Info("update user from Facebook oauth1", oauthUser)
 
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
-		if err != sql.ErrNoRows && err != repository.ErrUserNotFound {
+		if err != nil && (err != sql.ErrNoRows && err != repository.ErrUserNotFound) {
 			logrus.Error("error get user by email 1: ", err)
 			return err
 		} else if userResp != nil {
