@@ -13,15 +13,6 @@ func GenerateHashPassword(password string) ([]byte, error) {
 	return hashedPassword, nil
 }
 
-// func ComparePassword(hashedPassword string, password []byte) bool {
-// 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), password); err != nil {
-// 		logrus.Error("error comparing password: ", err)
-// 		return false
-// 	}
-
-// 	return true
-// }
-
 func ComparePassword(hashedPassword string, plainPassword []byte) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), plainPassword)
 	if err != nil {

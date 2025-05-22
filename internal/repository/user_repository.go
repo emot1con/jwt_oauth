@@ -68,6 +68,7 @@ func (r *UserRepository) GetByID(ctx context.Context, tx *sql.Tx, id int) (*enti
 
 // GetByEmail retrieves a user by their email
 func (r *UserRepository) GetByEmail(ctx context.Context, tx *sql.Tx, email string) (*entity.User, error) {
+	logrus.Info("repo facebook email: ", email)
 	query := `
 		SELECT id, email, password, name, created_at, updated_at
 		FROM users
@@ -75,6 +76,8 @@ func (r *UserRepository) GetByEmail(ctx context.Context, tx *sql.Tx, email strin
 	`
 
 	user := &entity.User{}
+	logrus.Info("repo facebook email query: ", email)
+
 	err := tx.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
@@ -83,10 +86,11 @@ func (r *UserRepository) GetByEmail(ctx context.Context, tx *sql.Tx, email strin
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-
 	if err != nil {
+		logrus.Infof("failed repo query: %v with error: %v", email, err)
 		return nil, err
 	}
+	logrus.Info("success repo query: ", email)
 
 	return user, nil
 }

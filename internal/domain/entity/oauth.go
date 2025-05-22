@@ -13,6 +13,14 @@ type OAuthUserData struct {
 	AvatarURL  string `json:"avatar_url,omitempty"`
 }
 
+type OauthGithubUserModel struct {
+	ProviderID int64  `json:"id"`
+	Provider   string `json:"provider"`
+	Login      string `json:"login"`
+	AvatarURL  string `json:"avatar_url"`
+	Email      string `json:"email"`
+}
+
 // OAuthState stores state information for OAuth flow
 type OAuthState struct {
 	State       string `json:"state"`

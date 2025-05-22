@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -35,10 +36,16 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 		}
 		defer resp.Body.Close()
 
-		var oauthUser *entity.OAuthUserData
-		if err := json.NewDecoder(resp.Body).Decode(&oauthUser); err != nil {
+		oauthUser := &entity.OAuthUserData{}
+		if err := json.NewDecoder(resp.Body).Decode(oauthUser); err != nil {
 			return err
 		}
+
+		if oauthUser.Email == "" {
+			logrus.Error("email not found in google oauth response")
+			return fmt.Errorf("email not found in google oauth response")
+		}
+
 		oauthUser.Provider = "Google"
 
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
@@ -49,7 +56,7 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 			if err := s.UserService.Update(ctx, tx, userResp); err != nil {
 				return err
 			}
-			logrus.Info("updating user data from google oauth")
+			logrus.Info("updating user data from google oauth: ", userResp.Email, userResp.Provider)
 
 			jwtResp, err = s.JWTCreateAndResponseUserOauthToken(userResp.ID, tx, ctx)
 			if err != nil {
@@ -61,7 +68,7 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 			return err
 		}
 
-		logrus.Info("creating new user from google oauth")
+		logrus.Info("creating new user from google oauth", userResp.Email, userResp.Provider)
 		jwtResp, err = s.CreateUserWithResponse(oauthUser, tx, ctx)
 		if err != nil {
 			return err
@@ -89,27 +96,35 @@ func (s *UserUseCase) GitHubAuth(code string) (*entity.JWTResponse, error) {
 		}
 
 		client := config.OauthGithubConfig.Client(ctx, token)
-		resp, err := client.Get("https://api.github.com/user/emails")
+		resp, err := client.Get("https://api.github.com/user")
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
 
-		var oauthUser *entity.OAuthUserData
-		if err := json.NewDecoder(resp.Body).Decode(&oauthUser); err != nil {
+		oauthUser := &entity.OauthGithubUserModel{}
+		if err := json.NewDecoder(resp.Body).Decode(oauthUser); err != nil {
 			return err
 		}
-		oauthUser.Provider = "GitHub"
 
+		if oauthUser.Email == "" {
+			logrus.Error("email not found in github oauth response")
+			return fmt.Errorf("email not found")
+		}
+
+		logrus.Info("update user from github oauth", oauthUser)
+
+		oauthUser.Provider = "GitHub"
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
 		if err == nil {
+			logrus.Info("update user from github oauth", userResp)
+
 			userResp.Provider = "GitHub"
-			userResp.ProviderID = oauthUser.ProviderID
+			userResp.ProviderID = strconv.Itoa(int(oauthUser.ProviderID))
 
 			if err := s.UserService.Update(ctx, tx, userResp); err != nil {
 				return err
 			}
-			logrus.Info("updating user data from Github oauth")
 
 			jwtResp, err = s.JWTCreateAndResponseUserOauthToken(userResp.ID, tx, ctx)
 			if err != nil {
@@ -121,8 +136,16 @@ func (s *UserUseCase) GitHubAuth(code string) (*entity.JWTResponse, error) {
 			return err
 		}
 
-		logrus.Info("creating new user from Github oauth")
-		jwtResp, err = s.CreateUserWithResponse(oauthUser, tx, ctx)
+		parsedOauthUserModel := &entity.OAuthUserData{
+			ProviderID: strconv.Itoa(int(oauthUser.ProviderID)),
+			Provider:   oauthUser.Provider,
+			Email:      oauthUser.Email,
+			Name:       oauthUser.Login,
+			AvatarURL:  oauthUser.AvatarURL,
+		}
+
+		logrus.Info("creating new user from Github oauth", parsedOauthUserModel.Email, parsedOauthUserModel.Provider)
+		jwtResp, err = s.CreateUserWithResponse(parsedOauthUserModel, tx, ctx)
 		if err != nil {
 			return err
 		}
@@ -149,27 +172,37 @@ func (s *UserUseCase) FacebookAuth(code string) (*entity.JWTResponse, error) {
 		}
 
 		client := config.OauthFacebookConfig.Client(ctx, token)
-		resp, err := client.Get("https://graph.facebook.com/me?fields=id,name,email")
+		resp, err := client.Get("https://graph.facebook.com/me?fields=id,name,email&access_token=" + token.AccessToken)
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
 
-		var oauthUser *entity.OAuthUserData
-		if err := json.NewDecoder(resp.Body).Decode(&oauthUser); err != nil {
+		oauthUser := &entity.OAuthUserData{}
+		if err := json.NewDecoder(resp.Body).Decode(oauthUser); err != nil {
 			return err
 		}
+
+		if oauthUser.Email == "" {
+			return fmt.Errorf("email not found")
+		}
+
 		oauthUser.Provider = "Facebook"
+		logrus.Info("update user from Facebook oauth1", oauthUser)
 
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
-		if err == nil {
+		if err != sql.ErrNoRows && err != repository.ErrUserNotFound {
+			logrus.Error("error get user by email 1: ", err)
+			return err
+		} else if userResp != nil {
+			logrus.Info("update user from Facebook oauth2", userResp)
+
 			userResp.Provider = "Facebook"
 			userResp.ProviderID = oauthUser.ProviderID
 
 			if err := s.UserService.Update(ctx, tx, userResp); err != nil {
 				return err
 			}
-			logrus.Info("updating user data from Facebook oauth")
 
 			jwtResp, err = s.JWTCreateAndResponseUserOauthToken(userResp.ID, tx, ctx)
 			if err != nil {
@@ -177,11 +210,8 @@ func (s *UserUseCase) FacebookAuth(code string) (*entity.JWTResponse, error) {
 			}
 
 			return nil
-		} else if err != sql.ErrNoRows && err != repository.ErrUserNotFound {
-			return err
 		}
 
-		logrus.Info("creating new user from Facebook oauth")
 		jwtResp, err = s.CreateUserWithResponse(oauthUser, tx, ctx)
 		if err != nil {
 			return err
@@ -196,6 +226,7 @@ func (s *UserUseCase) FacebookAuth(code string) (*entity.JWTResponse, error) {
 }
 
 func (s *UserUseCase) CreateUserWithResponse(oauthUser *entity.OAuthUserData, tx *sql.Tx, ctx context.Context) (*entity.JWTResponse, error) {
+	logrus.Info("creating new user from oauth", oauthUser.Email, oauthUser.Provider, oauthUser)
 	if err := s.UserService.Create(ctx, tx, &entity.RegisterPayload{
 		Name:     oauthUser.Name,
 		Email:    oauthUser.Email,
@@ -204,6 +235,7 @@ func (s *UserUseCase) CreateUserWithResponse(oauthUser *entity.OAuthUserData, tx
 	}); err != nil {
 		return nil, err
 	}
+	logrus.Info("succedd creating new user from oauth")
 
 	createdUser, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
 	if err != nil {

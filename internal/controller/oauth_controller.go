@@ -41,8 +41,6 @@ func (c *UserController) OAuthGoogleCallback(ctx *gin.Context) {
 		return
 	}
 
-	logrus.Infof("getting client info from google successful with jwt: %s", jwtToken)
-
 	ctx.JSON(http.StatusOK, jwtToken)
 	logrus.Info("google oauth callback successful")
 }
@@ -59,7 +57,6 @@ func (c *UserController) OAuthGithubCallback(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	logrus.Infof("getting client info from github successful with jwt: %s", jwtToken)
 
 	ctx.JSON(http.StatusOK, jwtToken)
 	logrus.Info("github oauth callback successful")
@@ -78,8 +75,6 @@ func (c *UserController) OAuthFacebookCallback(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	logrus.Infof("getting client info from facebook successful with jwt: %s", jwtToken)
 
 	ctx.JSON(http.StatusOK, jwtToken)
 	logrus.Info("facebook oauth callback successful")
