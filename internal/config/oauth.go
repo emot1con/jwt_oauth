@@ -28,7 +28,7 @@ func InitOauth() {
 		ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 		ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 		RedirectURL:  os.Getenv("GITHUB_REDIRECT_URL"),
-		Scopes:       []string{"read:user", "user:email"},
+		Scopes:       []string{"user", "user:email"},
 		Endpoint:     github.Endpoint,
 	}
 

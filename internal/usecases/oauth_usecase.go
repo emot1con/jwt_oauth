@@ -25,7 +25,6 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
 		token, err := config.OauthGoogleConfig.Exchange(ctx, code)
 		if err != nil {
-			logrus.Error("1 error: ", err)
 			return err
 		}
 
@@ -42,8 +41,7 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 		}
 
 		if oauthUser.Email == "" {
-			logrus.Error("email not found in google oauth response")
-			return fmt.Errorf("email not found in google oauth response")
+			return fmt.Errorf("email not found or private")
 		}
 
 		oauthUser.Provider = "Google"
@@ -58,7 +56,6 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 			if err := s.UserService.Update(ctx, tx, userResp); err != nil {
 				return err
 			}
-			logrus.Info("updating user data from google oauth: ", userResp.Email, userResp.Provider)
 
 			jwtResp, err = s.JWTCreateAndResponseUserOauthToken(userResp.ID, tx, ctx)
 			if err != nil {
@@ -67,7 +64,6 @@ func (s *UserUseCase) GoogleAuth(code string) (*entity.JWTResponse, error) {
 
 			return nil
 		}
-		logrus.Info("creating new user from google oauth", userResp.Email, userResp.Provider)
 		jwtResp, err = s.CreateUserWithResponse(oauthUser, tx, ctx)
 		if err != nil {
 			return err
@@ -90,7 +86,6 @@ func (s *UserUseCase) GitHubAuth(code string) (*entity.JWTResponse, error) {
 	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
 		token, err := config.OauthGithubConfig.Exchange(ctx, code)
 		if err != nil {
-			logrus.Error("1 error: ", err)
 			return err
 		}
 
@@ -107,19 +102,14 @@ func (s *UserUseCase) GitHubAuth(code string) (*entity.JWTResponse, error) {
 		}
 
 		if oauthUser.Email == "" {
-			logrus.Error("email not found in github oauth response")
-			return fmt.Errorf("email not found")
+			return fmt.Errorf("email not found or private")
 		}
-
-		logrus.Info("update user from github oauth", oauthUser)
 
 		oauthUser.Provider = "GitHub"
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
 		if err != nil && (err != sql.ErrNoRows && err != repository.ErrUserNotFound) {
-			logrus.Error("error get user by email 1: ", err)
 			return err
 		} else if userResp != nil {
-			logrus.Info("update user from github oauth", userResp)
 
 			userResp.Provider = "GitHub"
 			userResp.ProviderID = strconv.Itoa(int(oauthUser.ProviderID))
@@ -144,7 +134,6 @@ func (s *UserUseCase) GitHubAuth(code string) (*entity.JWTResponse, error) {
 			AvatarURL:  oauthUser.AvatarURL,
 		}
 
-		logrus.Info("creating new user from Github oauth", parsedOauthUserModel.Email, parsedOauthUserModel.Provider)
 		jwtResp, err = s.CreateUserWithResponse(parsedOauthUserModel, tx, ctx)
 		if err != nil {
 			return err
@@ -167,7 +156,6 @@ func (s *UserUseCase) FacebookAuth(code string) (*entity.JWTResponse, error) {
 	if err := middleware.WithTransaction(ctx, s.DB, func(tx *sql.Tx) error {
 		token, err := config.OauthFacebookConfig.Exchange(ctx, code)
 		if err != nil {
-			logrus.Error("1 error: ", err)
 			return err
 		}
 
@@ -184,19 +172,15 @@ func (s *UserUseCase) FacebookAuth(code string) (*entity.JWTResponse, error) {
 		}
 
 		if oauthUser.Email == "" {
-			return fmt.Errorf("email not found")
+			return fmt.Errorf("email not found or private")
 		}
 
 		oauthUser.Provider = "Facebook"
-		logrus.Info("update user from Facebook oauth1", oauthUser)
 
 		userResp, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
 		if err != nil && (err != sql.ErrNoRows && err != repository.ErrUserNotFound) {
-			logrus.Error("error get user by email 1: ", err)
 			return err
 		} else if userResp != nil {
-			logrus.Info("update user from Facebook oauth2", userResp)
-
 			userResp.Provider = "Facebook"
 			userResp.ProviderID = oauthUser.ProviderID
 
@@ -226,7 +210,6 @@ func (s *UserUseCase) FacebookAuth(code string) (*entity.JWTResponse, error) {
 }
 
 func (s *UserUseCase) CreateUserWithResponse(oauthUser *entity.OAuthUserData, tx *sql.Tx, ctx context.Context) (*entity.JWTResponse, error) {
-	logrus.Info("creating new user from oauth", oauthUser.Email, oauthUser.Provider, oauthUser)
 	if err := s.UserService.Create(ctx, tx, &entity.RegisterPayload{
 		Name:     oauthUser.Name,
 		Email:    oauthUser.Email,
@@ -235,7 +218,7 @@ func (s *UserUseCase) CreateUserWithResponse(oauthUser *entity.OAuthUserData, tx
 	}); err != nil {
 		return nil, err
 	}
-	logrus.Info("succedd creating new user from oauth")
+	logrus.Info("succedd creating new user in oauth method")
 
 	createdUser, err := s.UserService.GetByEmail(ctx, tx, oauthUser.Email)
 	if err != nil {
@@ -292,5 +275,4 @@ func (s *UserUseCase) JWTCreateAndResponseUserOauthToken(userID int, tx *sql.Tx,
 		RefreshToken:          fmt.Sprintf("Bearer %s", refreshToken),
 		RefreshTokenExpiredAt: time.Now().AddDate(0, 3, 0).Format("2006-01-02 15:04:05"),
 	}, nil
-
 }
