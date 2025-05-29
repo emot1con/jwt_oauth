@@ -5,9 +5,9 @@ WORKDIR /app
 # Copy frontend files
 COPY . ./
 
-# Install any dependencies if needed
-RUN go mod init frontend-server && \
-    go mod tidy
+# # Install any dependencies if needed
+# RUN go mod init frontend-server && \
+#     go mod tidy
 
 # Expose port 3000
 EXPOSE 3000

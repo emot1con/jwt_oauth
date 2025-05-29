@@ -1,7 +1,9 @@
 // Configuration file for the frontend
 const config = {
-    // API base URL - use the same hostname as the browser is using, but different port
-    API_URL: `http://${window.location.hostname}:8080`,
+    // API base URL - environment aware configuration
+    API_URL: window.location.hostname.includes('railway.app') 
+        ? 'https://BACKEND_SERVICE_URL.railway.app'  // Replace with your actual backend URL
+        : `http://${window.location.hostname}:8080`,
     
     // Token Storage Keys
     STORAGE_KEYS: {

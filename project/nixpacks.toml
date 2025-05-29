@@ -1,0 +1,5 @@
+[build]
+cmd = "echo 'Using Docker Compose instead of Nixpacks'"
+
+[start]
+cmd = "echo 'This project uses Docker Compose. Please deploy individual services instead.'"
